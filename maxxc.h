@@ -68,7 +68,7 @@ typedef struct {
 
 void route_delete(route_t *);
 void route_push_wpt(route_t *, const wpt_t *);
-void route_push_trkpts(route_t *, const trkpt_t *, int, int *, char **, const char *);
+void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **, const char *);
 
 typedef struct {
     int nroutes;

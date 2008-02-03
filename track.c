@@ -648,7 +648,7 @@ track_frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
     result_t *
 track_optimize_frcfd(track_t *track)
 {
-    static char *names[] = { "BD", "B1", "B2", "B3", "B4" };
+    static const char *names[] = { "BD", "B1", "B2", "B3", "B4" };
     static const char *last_name = "BA";
 
     result_t *result = result_new();

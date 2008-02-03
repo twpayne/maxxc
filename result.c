@@ -46,7 +46,7 @@ route_push_wpt(route_t *route, const wpt_t *wpt)
 }
 
     void
-route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, char **names, const char *last_name)
+route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, const char **names, const char *last_name)
 {
     for (int i = 0; i < n; ++i) {
 	wpt_t wpt;
