@@ -31,6 +31,7 @@ trkpt_to_waypoint(const trkpt_t *trkpt, waypoint_t *waypoint)
     waypoint->fix = trkpt->val == 'A' ? fix_3d : fix_2d;
 }
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline double
 track_delta(const track_t *track, int i, int j)
 {
@@ -38,15 +39,17 @@ track_delta(const track_t *track, int i, int j)
     const coord_t *coord_j = track->coords + j;
     double x = coord_i->sin_lat * coord_j->sin_lat + coord_i->cos_lat * coord_j->cos_lat * cos(coord_i->lon - coord_j->lon);
     return x < 1.0 ? R * acos(x) : 0.0;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_forward(const track_t *track, int i, double d)
 {
     int step = (int) (d / track->max_delta);
     return step > 0 ? i + step : ++i;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_fast_forward(const track_t *track, int i, double d)
 {
@@ -62,15 +65,17 @@ track_fast_forward(const track_t *track, int i, double d)
 	if (i >= track->n)
 	    return i;
     }
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_backward(const track_t *track, int i, double d)
 {
     int step = (int) (d / track->max_delta);
     return step > 0 ? i - step : --i;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_fast_backward(const track_t *track, int i, double d)
 {
@@ -86,8 +91,9 @@ track_fast_backward(const track_t *track, int i, double d)
 	if (i < 0)
 	    return i;
     }
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_furthest_from(const track_t *track, int i, int begin, int end, double bound, double *out)
 {
@@ -103,8 +109,9 @@ track_furthest_from(const track_t *track, int i, int begin, int end, double boun
 	}
     }
     return result;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_nearest_to(const track_t *track, int i, int begin, int end, double bound, double *out)
 {
@@ -120,9 +127,10 @@ track_nearest_to(const track_t *track, int i, int begin, int end, double bound, 
 	}
     }
     return result;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
     static inline int
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
 track_furthest_from2(const track_t *track, int i, int j, int begin, int end, double bound, double *out)
 {
     int result = -1;
@@ -137,9 +145,10 @@ track_furthest_from2(const track_t *track, int i, int j, int begin, int end, dou
 	}
     }
     return result;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
     static inline int
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
 track_first_at_least(const track_t *track, int i, int begin, int end, double bound)
 {
     for (int j = begin; j < end; ) {
@@ -149,8 +158,9 @@ track_first_at_least(const track_t *track, int i, int begin, int end, double bou
 	j = track_fast_forward(track, j, bound - d);
     }
     return -1;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
+__attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline int
 track_last_at_least(const track_t *track, int i, int begin, int end, double bound)
 {
@@ -161,7 +171,7 @@ track_last_at_least(const track_t *track, int i, int begin, int end, double boun
 	j = track_fast_backward(track, j, bound - d);
     }
     return -1;
-} __attribute__ ((nonnull(1))) __attribute__ ((pure))
+}
 
     static void
 track_initialize(track_t *track)
