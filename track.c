@@ -501,8 +501,6 @@ track_delete(track_t *track)
     }
 }
 
-/* FIXME track_open_distance and track_open_distance_one_point can be merged into init */
-
     double
 track_open_distance(const track_t *track, double bound, int *indexes)
 {
@@ -593,7 +591,7 @@ track_open_distance_three_points(const track_t *track, double bound, int *indexe
 }
 
     double
-frcfd_out_and_return(const track_t *track, double bound, int *indexes)
+track_frcfd_aller_retour(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
     for (int tp1 = 0; tp1 < track->ntrkpts - 2; ++tp1) {
@@ -615,7 +613,7 @@ frcfd_out_and_return(const track_t *track, double bound, int *indexes)
 }
 
     double
-frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
+track_frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
     for (int tp1 = 0; tp1 < track->ntrkpts - 1; ++tp1) {

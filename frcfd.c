@@ -20,22 +20,49 @@
 
 #include "frcfd.h"
 
-    void
-frcfd_optimize(track_t *track, result_t *result)
+    result_t *
+track_optimize_frcfd(track_t *track)
 {
-    track_compute_circuit_tables(track, 3.0 / R);
-    result->n = 1;
-    route_t *route = result->routes;
-    route->name = "distance libre";
-    int indexes[2];
-    route->distance = track_open_distance(track, 0.0, indexes);
-    route->multiplier = 1.0;
-    route->declared = 0;
-    route->circuit = 0;
-    route->n = 2;
-    for (int i = 0; i < 2; ++i)
-	trkpt_to_wpt(track->trkpts + indexes[i], route->wpts + i);
-    route->wpts[0].name = "BD";
-    route->wpts[1].name = "BA";
+    static char *names[] = { "BD", "B1", "B2", "B3", "B4" };
+    static const char *last_name = "BA";
 
+    result_t *result = result_new();
+
+    track_compute_circuit_tables(track, 3.0 / R);
+    int indexes[6];
+
+    double distance;
+    route_t *route;
+
+    distance = track_open_distance(track, 0.0, indexes);
+    route = result_push_new_route(result, "distance libre", distance, 1.0, 0, 0);
+    route_push_trkpts(route, track->trkpts, 2, indexes, names, last_name);
+
+    distance = track_open_distance_one_point(track, distance, indexes);
+    if (indexes[0] != -1) {
+	route = result_push_new_route(result, "distance libre avec un point de contournement", distance, 1.0, 0, 0);
+	route_push_trkpts(route, track->trkpts, 3, indexes, names, last_name);
+    }
+
+    distance = track_open_distance_two_points(track, distance, indexes);
+    if (indexes[0] != -1) {
+	route = result_push_new_route(result, "distance libre avec deux points de contournement", distance, 1.0, 0, 0);
+	route_push_trkpts(route, track->trkpts, 4, indexes, names, last_name);
+    }
+
+#if 0
+    distance = track_frcfd_aller_retour(track, 15.0 / R, indexes);
+    if (indexes[0] != -1) {
+	route = result_push_new_route(result, "parcours en aller-retour", distance, 1.2, 1, 0);
+	route_push_trkpts(route, track->trkpts, 4, indexes, names, last_name);
+    }
+
+    distance = track_frcfd_triangle_plat(track, distance, indexes);
+    if (indexes[0] != -1) {
+	route = result_push_new_route(result, "triangle plat", distance, 1.2, 1, 0);
+	route_push_trkpts(route, track->trkpts, 5, indexes, names, last_name);
+    }
+#endif
+
+    return result;
 }

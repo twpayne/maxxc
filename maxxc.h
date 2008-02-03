@@ -47,22 +47,7 @@ typedef struct {
     char *name;
 } wpt_t;
 
-typedef struct {
-    char *name;
-    double distance;
-    double multiplier;
-    int circuit;
-    int declared;
-    int n;
-    wpt_t wpts[8];
-} route_t;
-
-typedef struct {
-    int n;
-    route_t routes[8];
-} result_t;
-
-void result_write_gpx(const result_t *, FILE *);
+void wpt_delete(wpt_t *);
 
 typedef struct {
     time_t time;
@@ -74,6 +59,32 @@ typedef struct {
 } trkpt_t;
 
 void trkpt_to_wpt(const trkpt_t *, wpt_t *);
+
+typedef struct {
+    const char *name;
+    double distance;
+    double multiplier;
+    int circuit;
+    int declared;
+    int nwpts;
+    int wpts_capacity;
+    wpt_t *wpts;
+} route_t;
+
+void route_delete(route_t *);
+void route_push_wpt(route_t *, const wpt_t *);
+void route_push_trkpts(route_t *, const trkpt_t *, int, int *, char **, const char *);
+
+typedef struct {
+    int nroutes;
+    int routes_capacity;
+    route_t *routes;
+} result_t;
+
+result_t *result_new(void);
+void result_delete(result_t *);
+route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
+void result_write_gpx(const result_t *, FILE *);
 
 typedef struct {
     double cos_lat;
@@ -109,9 +120,9 @@ double track_open_distance(const track_t *, double, int *);
 double track_open_distance_one_point(const track_t *, double, int *);
 double track_open_distance_two_points(const track_t *, double, int *);
 double track_open_distance_three_points(const track_t *, double, int *);
-double frcfd_open_distance_out_and_return(const track_t *, double, int *);
-double frcfd_open_distance_triangle(const track_t *, double, int *);
+double track_frcfd_aller_retour(const track_t *, double, int *);
+double track_frcfd_triangle_plat(const track_t *, double, int *);
 
-track_t *track_igc_new(FILE *) __attribute__ ((malloc));
+result_t *track_optimize_frcfd(track_t *);
 
 #endif

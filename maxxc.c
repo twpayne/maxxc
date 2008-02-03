@@ -60,7 +60,7 @@ alloc(int size)
     static void
 usage(void)
 {
-    printf("%s - optimise cross country flights\n"
+    printf("%s - maximise cross country flights\n"
 	    "Usage: %s [options] [filename]\n"
 	    "Options:\n"
 	    "\t-h, --help\t\tprint usage and exit\n"
@@ -124,8 +124,8 @@ main(int argc, char *argv[])
     if (input != stdin)
 	fclose(input);
 
-    result_t result;
-    frcfd_optimize(track, &result);
+    result_t *result = track_optimize_frcfd(track);
+    track_delete(track);
 
     FILE *output;
     if (!output_filename || !strcmp(output_filename, "-")) {
@@ -135,11 +135,11 @@ main(int argc, char *argv[])
 	if (!output)
 	    error("fopen: %s: %s", output_filename, strerror(errno));
     }
-    result_write_gpx(&result, output);
+    result_write_gpx(result, output);
     if (output != stdout)
-	fclose(stdout);
+	fclose(output);
 
-    track_delete(track);
+    result_delete(result);
 
     return EXIT_SUCCESS;
 }

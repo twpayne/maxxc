@@ -20,6 +20,76 @@
 
 #include "maxxc.h"
 
+    void
+wpt_delete(wpt_t *wpt)
+{
+    if (wpt) {
+	free(wpt->name);
+	free(wpt);
+    }
+}
+
+    void
+route_push_wpt(route_t *route, const wpt_t *wpt)
+{
+    if (route->nwpts == route->wpts_capacity) {
+	route->wpts_capacity = route->wpts_capacity ? 2 * route->wpts_capacity : 8;
+	route->wpts = realloc(route->wpts, route->wpts_capacity * sizeof(wpt_t));
+	if (!route->wpts)
+	    DIE("realloc", errno);
+    }
+    route->wpts[route->nwpts] = *wpt;
+    ++route->nwpts;
+}
+
+    void
+route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, char **names, const char *last_name)
+{
+    for (int i = 0; i < n; ++i) {
+	wpt_t wpt;
+	trkpt_to_wpt(trkpts + indexes[i], &wpt);
+	wpt.name = i + 1 == n ? last_name : names[i];
+	route_push_wpt(route, &wpt);
+    }
+}
+
+    result_t *
+result_new(void)
+{
+    result_t *result = alloc(sizeof(result_t));
+    return result;
+}
+
+    void
+result_delete(result_t *result)
+{
+    if (result) {
+	for (int i = 0; i < result->nroutes; ++i)
+	    free(result->routes[i].wpts);
+	free(result->routes);
+	free(result);
+    }
+}
+
+    route_t *
+result_push_new_route(result_t *result, const char *name, double distance, double multiplier, int circuit, int declared)
+{
+    if (result->nroutes == result->routes_capacity) {
+	result->routes_capacity = result->routes_capacity ? 2 * result->routes_capacity : 8;
+	result->routes = realloc(result->routes, result->routes_capacity * sizeof(route_t));
+	if (!result->routes)
+	    DIE("realloc", errno);
+    }
+    route_t *route = result->routes + result->nroutes++;
+    memset(route, 0, sizeof(route_t));
+    route->name = name;
+    route->distance = distance;
+    route->multiplier = multiplier;
+    route->circuit = circuit;
+    route->declared = declared;
+    return route;
+}
+
     static void
 wpt_write_gpx(const wpt_t *wpt, FILE *file, const char *type)
 {
@@ -56,7 +126,7 @@ route_write_gpx(const route_t *route, FILE *file)
     if (route->declared)
 	fprintf(file, "\t\t\t<declared/>\n");
     fprintf(file, "\t\t</extensions>\n");
-    for (int i = 0; i < route->n; ++i)
+    for (int i = 0; i < route->nwpts; ++i)
 	wpt_write_gpx(route->wpts + i, file, "rtept");
     fprintf(file, "\t</rte>\n");
 }
@@ -65,7 +135,7 @@ route_write_gpx(const route_t *route, FILE *file)
 result_write_gpx(const result_t *result, FILE *file)
 {
     fprintf(file, "<?xml version=\"1.0\"?>\n");
-    fprintf(file, "<gpx version=\"1.1\" creator=\"http://maximumxc.com/\">\n");
+    fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
 #if 0
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
@@ -73,7 +143,7 @@ result_write_gpx(const result_t *result, FILE *file)
     fprintf(file, "\t\t</extensions>\n");
     fprintf(file, "\t</metadata>\n");
 #endif
-    for (int i = 0; i < result->n; ++i)
+    for (int i = 0; i < result->nroutes; ++i)
 	route_write_gpx(result->routes + i, file);
     fprintf(file, "</gpx>\n");
 }
