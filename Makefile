@@ -3,8 +3,8 @@ PREFIX=/usr/local
 CC=gcc
 CFLAGS=-g -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
 
-SRCS=frcfd.c maxxc.c result.c track.c
-HEADERS=maxxc.h frcfd.h
+SRCS=maxxc.c result.c track.c
+HEADERS=maxxc.h
 OBJS=$(SRCS:%.c=%.o)
 LIBS=-lm
 BINS=maxxc

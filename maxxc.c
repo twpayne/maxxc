@@ -20,7 +20,6 @@
 
 #include <getopt.h>
 #include "maxxc.h"
-#include "frcfd.h"
 
 const char *program_name = 0;
 
