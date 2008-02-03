@@ -20,8 +20,6 @@
 
 #include "maxxc.h"
 
-#define R 6371.0
-
     void
 trkpt_to_waypoint(const trkpt_t *trkpt, waypoint_t *waypoint)
 {
@@ -196,6 +194,34 @@ track_initialize(track_t *track)
     track->after[track->n - 1].distance = 0.0;
 }
 
+    void
+track_compute_circuit_tables(track_t *track, double circuit_bound)
+{
+    track->last_finish = alloc(track->n * sizeof(int));
+    track->best_start = alloc(track->n * sizeof(int));
+    int current_best_start = 0, i, j;
+    for (i = 0; i < track->n; ++i) {
+	for (j = track->n - 1; j >= i; ) {
+	    double error = track_delta(track, i, j);
+	    if (error < circuit_bound) {
+		track->last_finish[i] = j;
+		break;
+	    } else {
+		j = track_fast_backward(track, j, error - circuit_bound);
+	    }
+	}
+	if (track->last_finish[i] > track->last_finish[current_best_start])
+	    current_best_start = i;
+	if (track->last_finish[current_best_start] < i) {
+	    current_best_start = 0;
+	    for (j = 1; j <= i; ++j)
+		if (track->last_finish[j] > track->last_finish[current_best_start])
+		    current_best_start = j;
+	}
+	track->best_start[i] = current_best_start;
+    }
+}
+
     static void
 track_push_trkpt(track_t *track, const trkpt_t *trkpt)
 {
@@ -243,6 +269,8 @@ track_delete(track_t *track)
     }
 }
 
+/* FIXME track_open_distance and track_open_distance_one_point can be merged into init */
+
     double
 track_open_distance(const track_t *track, double bound, int *indexes)
 {
@@ -275,7 +303,6 @@ track_open_distance_one_point(const track_t *track, double bound, int *indexes)
     }
     return bound;
 }
-
 
     double
 track_open_distance_two_points(const track_t *track, double bound, int *indexes)
@@ -334,7 +361,7 @@ track_open_distance_three_points(const track_t *track, double bound, int *indexe
 }
 
     double
-track_out_and_return(const track_t *track, double bound, int *indexes)
+frcfd_out_and_return(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
     for (int tp1 = 0; tp1 < track->n - 2; ++tp1) {
@@ -356,7 +383,7 @@ track_out_and_return(const track_t *track, double bound, int *indexes)
 }
 
     double
-track_triangle(const track_t *track, double bound, int *indexes)
+frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
     for (int tp1 = 0; tp1 < track->n - 1; ++tp1) {

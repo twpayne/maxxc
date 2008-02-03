@@ -29,6 +29,8 @@
 #include <string.h>
 #include <time.h>
 
+#define R 6371.0
+
 #define DIE(syscall, _errno) die(__FILE__, __LINE__, __FUNCTION__, (syscall), (_errno))
 #define ABORT() die(__FILE__, __LINE__, __FUNCTION__, 0, -1)
 
@@ -101,13 +103,14 @@ typedef struct {
 } track_t;
 
 track_t *track_new_from_igc(FILE *) __attribute__ ((malloc));
+void track_compute_circuit_tables(track_t *, double);
 void track_delete(track_t *);
 double track_open_distance(const track_t *, double, int *);
 double track_open_distance_one_point(const track_t *, double, int *);
 double track_open_distance_two_points(const track_t *, double, int *);
 double track_open_distance_three_points(const track_t *, double, int *);
-double track_open_distance_out_and_return(const track_t *, double, int *);
-double track_open_distance_triangle(const track_t *, double, int *);
+double frcfd_open_distance_out_and_return(const track_t *, double, int *);
+double frcfd_open_distance_triangle(const track_t *, double, int *);
 
 int igc_record_parse_hfdte(const char *, struct tm *);
 int igc_record_parse_b(const char *, struct tm *, trkpt_t *);

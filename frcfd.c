@@ -23,6 +23,7 @@
     void
 frcfd_optimize(track_t *track, result_t *result)
 {
+    track_compute_circuit_tables(track, 3.0 / R);
     result->n = 1;
     route_t *route = result->routes;
     route->name = "distance libre";
