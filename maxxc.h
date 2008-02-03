@@ -70,7 +70,7 @@ typedef struct {
     time_t time;
     int lat;
     int lon;
-    int fix_validity;
+    int val;
     int alt;
     int ele;
     char *name;
@@ -111,9 +111,6 @@ double track_open_distance_two_points(const track_t *, double, int *);
 double track_open_distance_three_points(const track_t *, double, int *);
 double frcfd_open_distance_out_and_return(const track_t *, double, int *);
 double frcfd_open_distance_triangle(const track_t *, double, int *);
-
-int igc_record_parse_hfdte(const char *, struct tm *);
-int igc_record_parse_b(const char *, struct tm *, trkpt_t *);
 
 track_t *track_igc_new(FILE *) __attribute__ ((malloc));
 

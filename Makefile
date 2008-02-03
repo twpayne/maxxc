@@ -1,14 +1,9 @@
 PREFIX=/usr/local
 
 CC=gcc
-CFLAGS=-O2 -g -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
-RAGEL=ragel
-RLGEN=rlgen-cd
-RLGENFLAGS=-G2
+CFLAGS=-g -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
 
-RAGELS=igc_record_parse_b.rl igc_record_parse_hfdte.rl
-RAGEL_SRCS=$(RAGELS:%.rl=%.c)
-SRCS=frcfd.c maxxc.c result.c track.c $(RAGEL_SRCS)
+SRCS=frcfd.c maxxc.c result.c track.c
 HEADERS=maxxc.h frcfd.h
 OBJS=$(SRCS:%.c=%.o)
 LIBS=-lm
@@ -16,11 +11,10 @@ BINS=maxxc
 DOCS=COPYING
 
 .PHONY: all clean install reallyclean tarball
-.PRECIOUS: $(RAGEL_SRCS)
 
 all: $(BINS)
 
-tarball: $(RAGEL_SRCS)
+tarball:
 	mkdir maxxc-$(VERSION)
 	cp Makefile $(SRCS) $(HEADERS) $(DOCS) maxxc-$(VERSION)
 	tar -czf maxxc-$(VERSION).tar.gz maxxc-$(VERSION)
@@ -40,10 +34,6 @@ reallyclean: clean
 clean:
 	@echo "  CLEAN   $(BINS) $(OBJS)"
 	@rm -f $(BINS) $(OBJS)
-
-%.c: %.rl
-	@echo "  RAGEL   $<"
-	@$(RAGEL) $< | $(RLGEN) -o $@ $(RLGENFLAGS)
 
 %.o: %.c $(HEADERS)
 	@echo "  CC      $<"

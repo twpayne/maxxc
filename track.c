@@ -28,7 +28,7 @@ trkpt_to_waypoint(const trkpt_t *trkpt, waypoint_t *waypoint)
     waypoint->time = trkpt->time;
     waypoint->ele = trkpt->ele;
     waypoint->name = 0;
-    waypoint->fix = trkpt->fix_validity == 'A' ? fix_3d : fix_2d;
+    waypoint->fix = trkpt->val == 'A' ? fix_3d : fix_2d;
 }
 
     static inline double
@@ -235,6 +235,142 @@ track_push_trkpt(track_t *track, const trkpt_t *trkpt)
     ++track->n;
 }
 
+    static inline const char *
+match_char(const char *p, char c)
+{
+    if (!p) return 0;
+    return *p == c ? ++p : 0;
+}
+
+    static inline const char *
+match_string(const char *p, const char *s)
+{
+    if (!p) return 0;
+    while (*p && *s && *p == *s) {
+	++p;
+	++s;
+    }
+    return *s ? 0 : p;
+}
+
+    static inline const char *
+match_unsigned(const char *p, int n, int *result)
+{
+    if (!p) return 0;
+    *result = 0;
+    for (; n > 0; --n) {
+	if ('0' <= *p && *p <= '9') {
+	    *result = 10 * *result + *p - '0';
+	    ++p;
+	} else {
+	    return 0;
+	}
+    }
+    return p;
+}
+
+    static inline const char *
+match_one_of(const char *p, const char *s, char *result)
+{
+    if (!p) return 0;
+    for (; *s; ++s)
+	if (*p == *s) {
+	    *result = *p;
+	    return ++p;
+	}
+    return 0;
+}
+
+    static inline const char *
+match_until_eol(const char *p)
+{
+    if (!p) return 0;
+    while (*p && *p != '\r')
+	++p;
+    if (*p != '\r') return 0;
+    ++p;
+    return *p == '\n' ? ++p : 0;
+}
+
+    static inline const char *
+match_eos(const char *p)
+{
+    if (!p) return 0;
+    return *p ? p : 0;
+}
+
+    static const char *
+match_hfdte_record(const char *p, struct tm *tm)
+{
+    int mday = 0, mon = 0, year = 0;
+    p = match_string(p, "HFDTE");
+    if (!p) return 0;
+    p = match_unsigned(p, 2, &mday);
+    p = match_unsigned(p, 2, &mon);
+    p = match_unsigned(p, 2, &year);
+    p = match_string(p, "\r\n");
+    if (!p) return 0;
+    tm->tm_year = year + 2000 - 1900;
+    tm->tm_mon = mon - 1;
+    tm->tm_mday = mday;
+    return p;
+}
+
+    static const char *
+match_b_record(const char *p, struct tm *tm, trkpt_t *trkpt)
+{
+    p = match_char(p, 'B');
+    if (!p) return 0;
+    int hour = 0, min = 0, sec = 0;
+    p = match_unsigned(p, 2, &hour);
+    p = match_unsigned(p, 2, &min);
+    p = match_unsigned(p, 2, &sec);
+    if (!p) return 0;
+
+    int lat_deg = 0, lat_mmin = 0;
+    char lat_hemi = 0;
+    p = match_unsigned(p, 2, &lat_deg);
+    p = match_unsigned(p, 5, &lat_mmin);
+    p = match_one_of(p, "NS", &lat_hemi);
+    int lat = 60000 * lat_deg + lat_mmin;
+    if (lat_hemi == 'S') lat *= -1;
+
+    int lon_deg = 0, lon_mmin = 0;
+    char lon_hemi = 0;
+    p = match_unsigned(p, 3, &lon_deg);
+    p = match_unsigned(p, 5, &lon_mmin);
+    p = match_one_of(p, "EW", &lon_hemi);
+    int lon = 60000 * lon_deg + lon_mmin;
+    if (lon_hemi == 'W') lon *= -1;
+
+    char val = 0;
+    p = match_one_of(p, "AV", &val);
+
+    int alt = 0, ele = 0;
+    p = match_unsigned(p, 5, &alt);
+    p = match_unsigned(p, 5, &ele);
+
+    p = match_until_eol(p);
+    if (!p) return 0;
+
+    tm->tm_hour = hour;
+    tm->tm_min = min;
+    tm->tm_sec = sec;
+    time_t time;
+    time = mktime(tm);
+    if (time == (time_t) -1)
+	DIE("mktime", errno);
+    trkpt->time = time;
+    trkpt->lat = lat;
+    trkpt->lon = lon;
+    trkpt->val = val;
+    trkpt->alt = alt;
+    trkpt->ele = ele;
+    trkpt->name = 0;
+
+    return p;
+}
+
     track_t *
 track_new_from_igc(FILE *file)
 {
@@ -246,10 +382,14 @@ track_new_from_igc(FILE *file)
     memset(&trkpt, 0, sizeof trkpt);
     char record[1024];
     while (fgets(record, sizeof record, file)) {
-	if (igc_record_parse_hfdte(record, &tm)) {
-	    ;
-	} else if (igc_record_parse_b(record, &tm, &trkpt)) {
-	    track_push_trkpt(track, &trkpt);
+	switch (record[0]) {
+	    case 'B':
+		if (match_b_record(record, &tm, &trkpt))
+		    track_push_trkpt(track, &trkpt);
+		break;
+	    case 'H':
+		match_hfdte_record(record, &tm);
+		break;
 	}
     }
     track_initialize(track);
