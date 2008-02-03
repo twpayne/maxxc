@@ -10,7 +10,7 @@ LIBS=-lm
 BINS=maxxc
 DOCS=COPYING
 
-.PHONY: all clean install reallyclean tarball
+.PHONY: all clean install tarball
 
 all: $(BINS)
 
@@ -26,10 +26,6 @@ install: $(BINS)
 	@cp maxxc $(PREFIX)/bin/maxxc
 
 maxxc: $(OBJS)
-
-reallyclean: clean
-	@echo "  CLEAN   $(RAGEL_SRCS)"
-	@rm -f $(RAGEL_SRCS)
 
 clean:
 	@echo "  CLEAN   $(BINS) $(OBJS)"
