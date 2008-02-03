@@ -18,6 +18,7 @@
 
 */
 
+#include <getopt.h>
 #include "maxxc.h"
 #include "frcfd.h"
 
@@ -56,6 +57,17 @@ alloc(int size)
     return p;
 }
 
+    static void
+usage(void)
+{
+    printf("%s - optimise cross country flights\n"
+	    "Usage: %s [options] [filename]\n"
+	    "Options:\n"
+	    "\t-h, --help\t\tprint usage and exit\n"
+	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n",
+	    program_name, program_name);
+}
+
     int
 main(int argc, char *argv[])
 {
@@ -65,10 +77,68 @@ main(int argc, char *argv[])
     setenv("TZ", "UTC", 1);
     tzset();
 
-    track_t *track = track_new_from_igc(stdin);
+    const char *output_filename = 0;
+
+    opterr = 0;
+    while (1) {
+	static struct option options[] = {
+	    { "help",    no_argument,       0, 'h' },
+	    { "output",  required_argument, 0, 'o' },
+	    { 0,         0,                 0, 0 },
+	};
+	int c = getopt_long(argc, argv, ":ho:", options, 0);
+	if (c == -1)
+	    break;
+	switch (c) {
+	    case 'h':
+		usage();
+		return EXIT_SUCCESS;
+	    case 'o':
+		output_filename = optarg;
+		break;
+	    case ':':
+		error("option '%c' requires and argument", optopt);
+	    case '?':
+		error("invalid option '%c'", optopt);
+		break;
+	}
+    }
+
+    const char *input_filename = 0;
+    if (optind == argc)
+	;
+    else if (optind + 1 == argc)
+	input_filename = argv[optind];
+    else
+	error("excess arguments on command line");
+
+    FILE *input;
+    if (!input_filename) {
+	input = stdin;
+    } else {
+	input = fopen(input_filename, "r");
+	if (!input)
+	    error("fopen: %s: %s", input_filename, strerror(errno));
+    }
+    track_t *track = track_new_from_igc(input);
+    if (input != stdin)
+	fclose(input);
+
     result_t result;
     frcfd_optimize(track, &result);
-    result_write_gpx(&result, stdout);
+
+    FILE *output;
+    if (!output_filename || !strcmp(output_filename, "-")) {
+	output = stdout;
+    } else {
+	output = fopen(output_filename, "w");
+	if (!output)
+	    error("fopen: %s: %s", output_filename, strerror(errno));
+    }
+    result_write_gpx(&result, output);
+    if (output != stdout)
+	fclose(stdout);
+
     track_delete(track);
 
     return EXIT_SUCCESS;
