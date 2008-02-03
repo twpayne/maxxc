@@ -21,12 +21,7 @@
 #ifndef MAXXC_H
 #define MAXXC_H
 
-#include <errno.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 
 #define R 6371.0

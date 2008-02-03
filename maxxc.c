@@ -18,7 +18,12 @@
 
 */
 
+#include <errno.h>
 #include <getopt.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "maxxc.h"
 
 const char *program_name = 0;
