@@ -46,12 +46,12 @@ route_push_wpt(route_t *route, const wpt_t *wpt)
 }
 
     void
-route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, const char **names, const char *last_name)
+route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, const char **names)
 {
     for (int i = 0; i < n; ++i) {
 	wpt_t wpt;
 	trkpt_to_wpt(trkpts + indexes[i], &wpt);
-	wpt.name = i + 1 == n ? last_name : names[i];
+	wpt.name = names[i];
 	route_push_wpt(route, &wpt);
     }
 }

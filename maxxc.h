@@ -68,7 +68,7 @@ typedef struct {
 
 void route_delete(route_t *);
 void route_push_wpt(route_t *, const wpt_t *);
-void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **, const char *);
+void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
 
 typedef struct {
     int nroutes;
@@ -111,13 +111,6 @@ typedef struct {
 track_t *track_new_from_igc(FILE *) __attribute__ ((malloc));
 void track_compute_circuit_tables(track_t *, double);
 void track_delete(track_t *);
-double track_open_distance(const track_t *, double, int *);
-double track_open_distance_one_point(const track_t *, double, int *);
-double track_open_distance_two_points(const track_t *, double, int *);
-double track_open_distance_three_points(const track_t *, double, int *);
-double track_frcfd_aller_retour(const track_t *, double, int *);
-double track_frcfd_triangle_plat(const track_t *, double, int *);
-
 result_t *track_optimize_frcfd(track_t *);
 
 #endif

@@ -42,7 +42,7 @@ track_delta(const track_t *track, int i, int j)
     const coord_t *coord_i = track->coords + i;
     const coord_t *coord_j = track->coords + j;
     double x = coord_i->sin_lat * coord_j->sin_lat + coord_i->cos_lat * coord_j->cos_lat * cos(coord_i->lon - coord_j->lon);
-    return x < 1.0 ? R * acos(x) : 0.0;
+    return x < 1.0 ? acos(x) : 0.0;
 }
 
 __attribute__ ((nonnull(1))) __attribute__ ((pure))
@@ -505,7 +505,7 @@ track_delete(track_t *track)
     }
 }
 
-    double
+    static double
 track_open_distance(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = -1;
@@ -519,7 +519,7 @@ track_open_distance(const track_t *track, double bound, int *indexes)
     return bound;
 }
 
-    double
+    static double
 track_open_distance_one_point(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = -1;
@@ -538,7 +538,7 @@ track_open_distance_one_point(const track_t *track, double bound, int *indexes)
     return bound;
 }
 
-    double
+    static double
 track_open_distance_two_points(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
@@ -563,7 +563,7 @@ track_open_distance_two_points(const track_t *track, double bound, int *indexes)
     return bound;
 }
 
-    double
+    static double
 track_open_distance_three_points(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
@@ -594,9 +594,10 @@ track_open_distance_three_points(const track_t *track, double bound, int *indexe
     return bound;
 }
 
-    double
+    static double
 track_frcfd_aller_retour(const track_t *track, double bound, int *indexes)
 {
+    bound /= 2.0;
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
     for (int tp1 = 0; tp1 < track->ntrkpts - 2; ++tp1) {
 	int start = track->best_start[tp1];
@@ -613,10 +614,94 @@ track_frcfd_aller_retour(const track_t *track, double bound, int *indexes)
 	    bound = leg;
 	}
     }
+    return 2.0 * bound;
+}
+
+    static double
+track_frcfd_triangle_fai(const track_t *track, double bound, int *indexes)
+{
+    indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
+    double legbound = 0.28 * bound;
+    int tp1;
+    for (tp1 = 0; tp1 < track->ntrkpts - 2; ++tp1) {
+	int start = track->best_start[tp1];
+	int finish = track->last_finish[start];
+	if (finish < 0)
+	    continue;
+	int tp3first = track_first_at_least(track, tp1, tp1 + 2, finish + 1, legbound);
+	if (tp3first < 0)
+	    continue;
+	int tp3last = track_last_at_least(track, tp1, tp3first, finish + 1, legbound);
+	if (tp3last < 0)
+	    continue;
+	int tp3;
+	for (tp3 = tp3last; tp3 >= tp3first; ) {
+	    double leg3 = track_delta(track, tp3, tp1);
+	    if (leg3 < legbound) {
+		tp3 = track_fast_backward(track, tp3, legbound - leg3);
+		continue;
+	    }
+	    double shortestlegbound = 0.28 * leg3 / 0.44;
+	    int tp2first = track_first_at_least(track, tp1, tp1 + 1, tp3 - 1, shortestlegbound);
+	    if (tp2first < 0) {
+		--tp3;
+		continue;
+	    }
+	    int tp2last = track_last_at_least(track, tp3, tp2first, tp3, shortestlegbound);
+	    if (tp2last < 0) {
+		--tp3;
+		continue;
+	    }
+	    double longestlegbound = 0.44 * leg3 / 0.28;
+	    int tp2;
+	    for (tp2 = tp2first; tp2 <= tp2last; ) {
+		double d = 0.0;
+		double leg1 = track_delta(track, tp1, tp2);
+		if (leg1 < shortestlegbound)
+		    d = shortestlegbound - leg1;
+		if (leg1 > longestlegbound && leg1 - longestlegbound > d)
+		    d = leg1 - longestlegbound;
+		double leg2 = track_delta(track, tp2, tp3);
+		if (leg2 < shortestlegbound && shortestlegbound - leg2 > d)
+		    d = shortestlegbound - leg2;
+		if (leg2 > longestlegbound && leg2 - longestlegbound > d)
+		    d = leg2 - longestlegbound;
+		if (d > 0.0) {
+		    tp2 = track_fast_forward(track, tp2, d);
+		    continue;
+		}
+		double total = leg1 + leg2 + leg3;
+		double thislegbound = 0.28 * total;
+		if (leg1 < thislegbound)
+		    d = thislegbound - leg1;
+		if (leg2 < thislegbound && thislegbound - leg2 > d)
+		    d = thislegbound - leg2;
+		if (leg3 < thislegbound && thislegbound - leg3 > d)
+		    d = thislegbound - leg3;
+		if (d > 0.0) {
+		    tp2 = track_fast_forward(track, tp2, 0.5 * d);
+		    continue;
+		}
+		if (total < bound) {
+		    tp2 = track_fast_forward(track, tp2, 0.5 * (bound - total));
+		    continue;
+		}
+		bound = total;
+		legbound = thislegbound;
+		indexes[0] = start;
+		indexes[1] = tp1;
+		indexes[2] = tp2;
+		indexes[3] = tp3;
+		indexes[4] = finish;
+		++tp2;
+	    }
+	    --tp3;
+	}
+    }
     return bound;
 }
 
-    double
+    static double
 track_frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
@@ -645,49 +730,69 @@ track_frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
     return bound;
 }
 
+    static double
+track_frcfd_circuit_distance(const track_t *track, int n, int *indexes)
+{
+    double distance = track_delta(track, indexes[n - 2], indexes[1]);
+    for (int i = 1; i < n - 2; ++i)
+	distance += track_delta(track, indexes[i], indexes[i + 1]);
+    return R * distance;
+}
+
     result_t *
 track_optimize_frcfd(track_t *track)
 {
-    static const char *names[] = { "BD", "B1", "B2", "B3", "B4" };
-    static const char *last_name = "BA";
-
     result_t *result = result_new();
 
-    track_compute_circuit_tables(track, 3.0 / R);
     int indexes[6];
+    double bound;
 
-    double distance;
-    route_t *route;
-
-    distance = track_open_distance(track, 0.0, indexes);
-    route = result_push_new_route(result, "distance libre", distance, 1.0, 0, 0);
-    route_push_trkpts(route, track->trkpts, 2, indexes, names, last_name);
-
-    distance = track_open_distance_one_point(track, distance, indexes);
+    bound = track_open_distance(track, 0.0, indexes);
     if (indexes[0] != -1) {
-	route = result_push_new_route(result, "distance libre avec un point de contournement", distance, 1.0, 0, 0);
-	route_push_trkpts(route, track->trkpts, 3, indexes, names, last_name);
+	route_t *route = result_push_new_route(result, "distance libre", R * bound, 1.0, 0, 0);
+	const char *names[] = { "BD", "BA" };
+	route_push_trkpts(route, track->trkpts, 2, indexes, names);
     }
 
-    distance = track_open_distance_two_points(track, distance, indexes);
+    bound = track_open_distance_one_point(track, bound, indexes);
     if (indexes[0] != -1) {
-	route = result_push_new_route(result, "distance libre avec deux points de contournement", distance, 1.0, 0, 0);
-	route_push_trkpts(route, track->trkpts, 4, indexes, names, last_name);
+	route_t *route = result_push_new_route(result, "distance libre avec un point de contournement", R * bound, 1.0, 0, 0);
+	const char *names[] = { "BD", "B1", "BA" };
+	route_push_trkpts(route, track->trkpts, 3, indexes, names);
     }
 
-#if 0
-    distance = track_frcfd_aller_retour(track, 15.0 / R, indexes);
+    bound = track_open_distance_two_points(track, bound, indexes);
     if (indexes[0] != -1) {
-	route = result_push_new_route(result, "parcours en aller-retour", distance, 1.2, 1, 0);
-	route_push_trkpts(route, track->trkpts, 4, indexes, names, last_name);
+	route_t *route = result_push_new_route(result, "distance libre avec deux points de contournement", R * bound, 1.0, 0, 0);
+	const char *names[] = { "BD", "B1", "B2", "BA" };
+	route_push_trkpts(route, track->trkpts, 4, indexes, names);
     }
 
-    distance = track_frcfd_triangle_plat(track, distance, indexes);
+    track_compute_circuit_tables(track, 3.0 / R);
+
+    bound = track_frcfd_aller_retour(track, 15.0 / R, indexes);
     if (indexes[0] != -1) {
-	route = result_push_new_route(result, "triangle plat", distance, 1.2, 1, 0);
-	route_push_trkpts(route, track->trkpts, 5, indexes, names, last_name);
+	double distance = track_frcfd_circuit_distance(track, 4, indexes);
+	route_t *route = result_push_new_route(result, "parcours en aller-retour", distance, 1.2, 1, 0);
+	static const char *names[] = { "BD", "B1", "B2", "BA" };
+	route_push_trkpts(route, track->trkpts, 4, indexes, names);
     }
-#endif
+
+    bound = track_frcfd_triangle_fai(track, bound, indexes);
+    if (indexes[0] != -1) {
+	double distance = track_frcfd_circuit_distance(track, 5, indexes);
+	route_t *route = result_push_new_route(result, "triangle FAI", distance, 1.4, 1, 0);
+	static const char *names[] = { "BD", "B1", "B2", "B3", "BA" };
+	route_push_trkpts(route, track->trkpts, 5, indexes, names);
+    }
+
+    bound = track_frcfd_triangle_plat(track, bound, indexes);
+    if (indexes[0] != -1) {
+	double distance = track_frcfd_circuit_distance(track, 5, indexes);
+	route_t *route = result_push_new_route(result, "triangle plat", distance, 1.2, 1, 0);
+	static const char *names[] = { "BD", "B1", "B2", "B3", "BA" };
+	route_push_trkpts(route, track->trkpts, 5, indexes, names);
+    }
 
     return result;
 }
