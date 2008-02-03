@@ -20,37 +20,24 @@
 
 #include "maxxc.h"
 
-    static const char *
-fix_to_s(fix_t fix)
-{
-    switch (fix) {
-	case fix_none: return "none";
-	case fix_2d:   return "2d";
-	case fix_3d:   return "3d";
-	case fix_dgps: return "dgps";
-	case fix_pps:  return "pps";
-	default:       ABORT();
-    }
-}
-
     static void
-waypoint_write_gpx(const waypoint_t *waypoint, FILE *file, const char *type)
+wpt_write_gpx(const wpt_t *wpt, FILE *file, const char *type)
 {
-    fprintf(file, "\t\t<%s lat=\"%.8f\" lon=\"%.8f\">\n", type, waypoint->lat / 60000.0, waypoint->lon / 60000.0);
-    if (waypoint->fix != fix_none && waypoint->fix != fix_2d)
-	fprintf(file, "\t\t\t<ele>%d</ele>\n", waypoint->ele);
-    if (waypoint->time != (time_t) -1) {
+    fprintf(file, "\t\t<%s lat=\"%.8f\" lon=\"%.8f\">\n", type, wpt->lat / 60000.0, wpt->lon / 60000.0);
+    if (wpt->val == 'A')
+	fprintf(file, "\t\t\t<ele>%d</ele>\n", wpt->ele);
+    if (wpt->time != (time_t) -1) {
 	struct tm tm;
-	if (!gmtime_r(&waypoint->time, &tm))
+	if (!gmtime_r(&wpt->time, &tm))
 	    DIE("gmtime_r", errno);
 	char time[32];
 	if (!strftime(time, sizeof time, "%Y-%m-%dT%H:%M:%SZ", &tm))
 	    DIE("strftime", errno);
 	fprintf(file, "\t\t\t<time>%s</time>\n", time);
     }
-    if (waypoint->name)
-	fprintf(file, "\t\t\t<name>%s</name>\n", waypoint->name);
-    fprintf(file, "\t\t\t<fix>%s</fix>\n", fix_to_s(waypoint->fix));
+    if (wpt->name)
+	fprintf(file, "\t\t\t<name>%s</name>\n", wpt->name);
+    fprintf(file, "\t\t\t<fix>%s</fix>\n", wpt->val == 'A' ? "3d" : "2d");
     fprintf(file, "\t\t</%s>\n", type);
 }
 
@@ -70,7 +57,7 @@ route_write_gpx(const route_t *route, FILE *file)
 	fprintf(file, "\t\t\t<declared/>\n");
     fprintf(file, "\t\t</extensions>\n");
     for (int i = 0; i < route->n; ++i)
-	waypoint_write_gpx(route->waypoints + i, file, "rtept");
+	wpt_write_gpx(route->wpts + i, file, "rtept");
     fprintf(file, "\t</rte>\n");
 }
 

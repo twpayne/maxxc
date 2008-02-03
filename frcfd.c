@@ -34,8 +34,8 @@ frcfd_optimize(track_t *track, result_t *result)
     route->circuit = 0;
     route->n = 2;
     for (int i = 0; i < 2; ++i)
-	trkpt_to_waypoint(track->trkpts + indexes[i], route->waypoints + i);
-    route->waypoints[0].name = "BD";
-    route->waypoints[1].name = "BA";
+	trkpt_to_wpt(track->trkpts + indexes[i], route->wpts + i);
+    route->wpts[0].name = "BD";
+    route->wpts[1].name = "BA";
 
 }

@@ -38,16 +38,14 @@ void error(const char *, ...) __attribute__ ((noreturn, format(printf, 1, 2)));
 void die(const char *, int, const char *, const char *, int) __attribute__ ((noreturn));
 void *alloc(int) __attribute__ ((malloc));
 
-typedef enum { fix_none, fix_2d, fix_3d, fix_dgps, fix_pps } fix_t;
-
 typedef struct {
     int lat;
     int lon;
     time_t time;
+    int val;
     int ele;
     char *name;
-    fix_t fix;
-} waypoint_t;
+} wpt_t;
 
 typedef struct {
     char *name;
@@ -56,7 +54,7 @@ typedef struct {
     int circuit;
     int declared;
     int n;
-    waypoint_t waypoints[8];
+    wpt_t wpts[8];
 } route_t;
 
 typedef struct {
@@ -73,10 +71,9 @@ typedef struct {
     int val;
     int alt;
     int ele;
-    char *name;
 } trkpt_t;
 
-void trkpt_to_waypoint(const trkpt_t *, waypoint_t *);
+void trkpt_to_wpt(const trkpt_t *, wpt_t *);
 
 typedef struct {
     double cos_lat;
@@ -90,9 +87,12 @@ typedef struct {
 } limit_t;
 
 typedef struct {
-    int n;
-    int capacity;
+    int ntrkpts;
+    int trkpts_capacity;
     trkpt_t *trkpts;
+    int ntask_wpts;
+    int task_wpts_capacity;
+    wpt_t *task_wpts;
     coord_t *coords;
     double max_delta;
     double *sigma_delta;

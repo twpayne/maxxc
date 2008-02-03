@@ -21,14 +21,14 @@
 #include "maxxc.h"
 
     void
-trkpt_to_waypoint(const trkpt_t *trkpt, waypoint_t *waypoint)
+trkpt_to_wpt(const trkpt_t *trkpt, wpt_t *wpt)
 {
-    waypoint->lat = trkpt->lat;
-    waypoint->lon = trkpt->lon;
-    waypoint->time = trkpt->time;
-    waypoint->ele = trkpt->ele;
-    waypoint->name = 0;
-    waypoint->fix = trkpt->val == 'A' ? fix_3d : fix_2d;
+    wpt->lat = trkpt->lat;
+    wpt->lon = trkpt->lon;
+    wpt->time = trkpt->time;
+    wpt->ele = trkpt->ele;
+    wpt->name = 0;
+    wpt->val = trkpt->val;
 }
 
 __attribute__ ((nonnull(1))) __attribute__ ((pure))
@@ -55,14 +55,14 @@ track_fast_forward(const track_t *track, int i, double d)
 {
     double target = track->sigma_delta[i] + d;
     i = track_forward(track, i, d);
-    if (i >= track->n)
+    if (i >= track->ntrkpts)
 	return i;
     while (1) {
 	double error = target - track->sigma_delta[i];
 	if (error <= 0.0)
 	    return i;
 	i = track_forward(track, i, error);
-	if (i >= track->n)
+	if (i >= track->ntrkpts)
 	    return i;
     }
 }
@@ -176,8 +176,8 @@ track_last_at_least(const track_t *track, int i, int begin, int end, double boun
     static void
 track_initialize(track_t *track)
 {
-    track->coords = alloc(track->n * sizeof(coord_t));
-    for (int i = 0; i < track->n; ++i) {
+    track->coords = alloc(track->ntrkpts * sizeof(coord_t));
+    for (int i = 0; i < track->ntrkpts; ++i) {
 	double lat = M_PI * track->trkpts[i].lat / (180 * 60000);
 	double lon = M_PI * track->trkpts[i].lon / (180 * 60000);
 	track->coords[i].sin_lat = sin(lat);
@@ -185,33 +185,37 @@ track_initialize(track_t *track)
 	track->coords[i].lon = lon;
     }
     track->max_delta = 0.0;
-    track->sigma_delta = alloc(track->n * sizeof(double));
+    track->sigma_delta = alloc(track->ntrkpts * sizeof(double));
     double sigma_delta = 0.0;
-    for (int i = 1; i < track->n; ++i) {
+    for (int i = 1; i < track->ntrkpts; ++i) {
 	track->sigma_delta[i] = sigma_delta;
-	sigma_delta += track_delta(track, i - 1, i);
+	double delta = track_delta(track, i - 1, i);
+	sigma_delta += delta;
+	track->sigma_delta[i] = sigma_delta;
+	if (delta > track->max_delta)
+	    track->max_delta = delta;
     }
-    track->before = alloc(track->n * sizeof(limit_t));
+    track->before = alloc(track->ntrkpts * sizeof(limit_t));
     track->before[0].index = 0;
     track->before[0].distance = 0.0;
-    for (int i = 1; i < track->n; ++i)
+    for (int i = 1; i < track->ntrkpts; ++i)
 	track->before[i].index = track_furthest_from(track, i, 0, i, track->before[i - 1].distance - track->max_delta, &track->before[i].distance);
-    track->after = alloc(track->n * sizeof(limit_t));
-    track->after[0].index = track_furthest_from(track, 0, 1, track->n, 0.0, &track->after[0].distance);
-    for (int i = 1; i < track->n - 1; ++i)
-	track->after[i].index = track_furthest_from(track, i, i + 1, track->n, track->after[i - 1].distance - track->max_delta, &track->after[i].distance);
-    track->after[track->n - 1].index = track->n - 1;
-    track->after[track->n - 1].distance = 0.0;
+    track->after = alloc(track->ntrkpts * sizeof(limit_t));
+    track->after[0].index = track_furthest_from(track, 0, 1, track->ntrkpts, 0.0, &track->after[0].distance);
+    for (int i = 1; i < track->ntrkpts - 1; ++i)
+	track->after[i].index = track_furthest_from(track, i, i + 1, track->ntrkpts, track->after[i - 1].distance - track->max_delta, &track->after[i].distance);
+    track->after[track->ntrkpts - 1].index = track->ntrkpts - 1;
+    track->after[track->ntrkpts - 1].distance = 0.0;
 }
 
     void
 track_compute_circuit_tables(track_t *track, double circuit_bound)
 {
-    track->last_finish = alloc(track->n * sizeof(int));
-    track->best_start = alloc(track->n * sizeof(int));
+    track->last_finish = alloc(track->ntrkpts * sizeof(int));
+    track->best_start = alloc(track->ntrkpts * sizeof(int));
     int current_best_start = 0, i, j;
-    for (i = 0; i < track->n; ++i) {
-	for (j = track->n - 1; j >= i; ) {
+    for (i = 0; i < track->ntrkpts; ++i) {
+	for (j = track->ntrkpts - 1; j >= i; ) {
 	    double error = track_delta(track, i, j);
 	    if (error < circuit_bound) {
 		track->last_finish[i] = j;
@@ -230,19 +234,6 @@ track_compute_circuit_tables(track_t *track, double circuit_bound)
 	}
 	track->best_start[i] = current_best_start;
     }
-}
-
-    static void
-track_push_trkpt(track_t *track, const trkpt_t *trkpt)
-{
-    if (track->n == track->capacity) {
-	track->capacity = track->capacity ? 2 * track->capacity : 16384;
-	track->trkpts = realloc(track->trkpts, track->capacity * sizeof(trkpt_t));
-	if (!track->trkpts)
-	    DIE("realloc", errno);
-    }
-    track->trkpts[track->n] = *trkpt;
-    ++track->n;
 }
 
     static inline const char *
@@ -292,6 +283,20 @@ match_one_of(const char *p, const char *s, char *result)
 }
 
     static inline const char *
+match_capture_until(const char *p, char c, char **result)
+{
+    if (!p) return 0;
+    const char *start = p;
+    while (*p && *p != c)
+	++p;
+    if (!p) return 0;
+    *result = alloc(p - start + 1);
+    memcpy(*result, start, p - start);
+    (*result)[p - start] = '\0';
+    return p;
+}
+
+    static inline const char *
 match_until_eol(const char *p)
 {
     if (!p) return 0;
@@ -310,27 +315,11 @@ match_eos(const char *p)
 }
 
     static const char *
-match_hfdte_record(const char *p, struct tm *tm)
-{
-    int mday = 0, mon = 0, year = 0;
-    p = match_string(p, "HFDTE");
-    if (!p) return 0;
-    p = match_unsigned(p, 2, &mday);
-    p = match_unsigned(p, 2, &mon);
-    p = match_unsigned(p, 2, &year);
-    p = match_string(p, "\r\n");
-    if (!p) return 0;
-    tm->tm_year = year + 2000 - 1900;
-    tm->tm_mon = mon - 1;
-    tm->tm_mday = mday;
-    return p;
-}
-
-    static const char *
 match_b_record(const char *p, struct tm *tm, trkpt_t *trkpt)
 {
     p = match_char(p, 'B');
     if (!p) return 0;
+
     int hour = 0, min = 0, sec = 0;
     p = match_unsigned(p, 2, &hour);
     p = match_unsigned(p, 2, &min);
@@ -376,9 +365,89 @@ match_b_record(const char *p, struct tm *tm, trkpt_t *trkpt)
     trkpt->val = val;
     trkpt->alt = alt;
     trkpt->ele = ele;
-    trkpt->name = 0;
 
     return p;
+}
+
+    static const char *
+match_c_record(const char *p, wpt_t *wpt)
+{
+    p = match_char(p, 'C');
+    if (!p) return 0;
+
+    int lat_deg = 0, lat_mmin = 0;
+    char lat_hemi = 0;
+    p = match_unsigned(p, 2, &lat_deg);
+    p = match_unsigned(p, 5, &lat_mmin);
+    p = match_one_of(p, "NS", &lat_hemi);
+    int lat = 60000 * lat_deg + lat_mmin;
+    if (lat_hemi == 'S') lat *= -1;
+
+    int lon_deg = 0, lon_mmin = 0;
+    char lon_hemi = 0;
+    p = match_unsigned(p, 3, &lon_deg);
+    p = match_unsigned(p, 5, &lon_mmin);
+    p = match_one_of(p, "EW", &lon_hemi);
+    int lon = 60000 * lon_deg + lon_mmin;
+    if (lon_hemi == 'W') lon *= -1;
+
+    char *name = 0;
+    p = match_capture_until(p, '\r', &name);
+
+    p = match_until_eol(p);
+    if (!p) return 0;
+
+    wpt->time = (time_t) -1;
+    wpt->lat = lat;
+    wpt->lon = lon;
+    wpt->val = 'V';
+    wpt->ele = 0;
+    wpt->name = name;
+
+    return p;
+}
+
+    static const char *
+match_hfdte_record(const char *p, struct tm *tm)
+{
+    int mday = 0, mon = 0, year = 0;
+    p = match_string(p, "HFDTE");
+    if (!p) return 0;
+    p = match_unsigned(p, 2, &mday);
+    p = match_unsigned(p, 2, &mon);
+    p = match_unsigned(p, 2, &year);
+    p = match_string(p, "\r\n");
+    if (!p) return 0;
+    tm->tm_year = year + 2000 - 1900;
+    tm->tm_mon = mon - 1;
+    tm->tm_mday = mday;
+    return p;
+}
+
+    static void
+track_push_trkpt(track_t *track, const trkpt_t *trkpt)
+{
+    if (track->ntrkpts == track->trkpts_capacity) {
+	track->trkpts_capacity = track->trkpts_capacity ? 2 * track->trkpts_capacity : 16384;
+	track->trkpts = realloc(track->trkpts, track->trkpts_capacity * sizeof(trkpt_t));
+	if (!track->trkpts)
+	    DIE("realloc", errno);
+    }
+    track->trkpts[track->ntrkpts] = *trkpt;
+    ++track->ntrkpts;
+}
+
+    static void
+track_push_task_wpt(track_t *track, const wpt_t *task_wpt)
+{
+    if (track->ntask_wpts == track->task_wpts_capacity) {
+	track->task_wpts_capacity = track->task_wpts_capacity ? 2 * track->task_wpts_capacity : 16;
+	track->task_wpts = realloc(track->task_wpts, track->task_wpts_capacity * sizeof(wpt_t));
+	if (!track->task_wpts)
+	    DIE("realloc", errno);
+    }
+    track->task_wpts[track->ntask_wpts] = *task_wpt;
+    ++track->ntask_wpts;
 }
 
     track_t *
@@ -390,12 +459,18 @@ track_new_from_igc(FILE *file)
     memset(&tm, 0, sizeof tm);
     trkpt_t trkpt;
     memset(&trkpt, 0, sizeof trkpt);
+    wpt_t wpt;
+    memset(&wpt, 0, sizeof wpt);
     char record[1024];
     while (fgets(record, sizeof record, file)) {
 	switch (record[0]) {
 	    case 'B':
 		if (match_b_record(record, &tm, &trkpt))
 		    track_push_trkpt(track, &trkpt);
+		break;
+	    case 'C':
+		if (match_c_record(record, &wpt))
+		    track_push_task_wpt(track, &wpt);
 		break;
 	    case 'H':
 		match_hfdte_record(record, &tm);
@@ -411,10 +486,17 @@ track_delete(track_t *track)
 {
     if (track) {
 	free(track->trkpts);
+	if (track->task_wpts) {
+	    for (int i = 0; i < track->ntask_wpts; ++i)
+		free(track->task_wpts[i].name);
+	    free(track->task_wpts);
+	}
 	free(track->coords);
 	free(track->sigma_delta);
 	free(track->before);
 	free(track->after);
+	free(track->best_start);
+	free(track->last_finish);
 	free(track);
     }
 }
@@ -425,8 +507,8 @@ track_delete(track_t *track)
 track_open_distance(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = -1;
-    for (int start = 0; start < track->n - 1; ++start) {
-	int finish = track_furthest_from(track, start, start + 1, track->n, bound, &bound);
+    for (int start = 0; start < track->ntrkpts - 1; ++start) {
+	int finish = track_furthest_from(track, start, start + 1, track->ntrkpts, bound, &bound);
 	if (finish != -1) {
 	    indexes[0] = start;
 	    indexes[1] = finish;
@@ -439,7 +521,7 @@ track_open_distance(const track_t *track, double bound, int *indexes)
 track_open_distance_one_point(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = -1;
-    for (int tp1 = 1; tp1 < track->n - 1; ) {
+    for (int tp1 = 1; tp1 < track->ntrkpts - 1; ) {
         double total = track->before[tp1].distance + track->after[tp1].distance;
         if (total > bound) {
             indexes[0] = track->before[tp1].index;
@@ -458,10 +540,10 @@ track_open_distance_one_point(const track_t *track, double bound, int *indexes)
 track_open_distance_two_points(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
-    for (int tp1 = 1; tp1 < track->n - 2; ++tp1) {
+    for (int tp1 = 1; tp1 < track->ntrkpts - 2; ++tp1) {
 	double leg1 = track->before[tp1].distance;
 	double bound23 = bound - leg1;
-	for (int tp2 = tp1 + 1; tp2 < track->n - 1; ) {
+	for (int tp2 = tp1 + 1; tp2 < track->ntrkpts - 1; ) {
 	    double leg23 = track_delta(track, tp1, tp2) + track->after[tp2].distance;
 	    if (leg23 > bound23) {
 		indexes[0] = track->before[tp1].index;
@@ -483,13 +565,13 @@ track_open_distance_two_points(const track_t *track, double bound, int *indexes)
 track_open_distance_three_points(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
-    for (int tp1 = 1; tp1 < track->n - 3; ++tp1) {
+    for (int tp1 = 1; tp1 < track->ntrkpts - 3; ++tp1) {
 	double leg1 = track->before[tp1].distance;
 	double bound234 = bound - leg1;
-	for (int tp2 = tp1 + 1; tp2 < track->n - 2; ++tp2) {
+	for (int tp2 = tp1 + 1; tp2 < track->ntrkpts - 2; ++tp2) {
 	    double leg2 = track_delta(track, tp1, tp2);
 	    double bound34 = bound234 - leg2;
-	    for (int tp3 = tp2 + 1; tp3 < track->n - 1; ) {
+	    for (int tp3 = tp2 + 1; tp3 < track->ntrkpts - 1; ) {
 		double legs34 = track_delta(track, tp2, tp3) + track->after[tp3].distance;
 		if (legs34 > bound34) {
 		    indexes[0] = track->before[tp1].index;
@@ -514,7 +596,7 @@ track_open_distance_three_points(const track_t *track, double bound, int *indexe
 frcfd_out_and_return(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
-    for (int tp1 = 0; tp1 < track->n - 2; ++tp1) {
+    for (int tp1 = 0; tp1 < track->ntrkpts - 2; ++tp1) {
 	int start = track->best_start[tp1];
 	int finish = track->last_finish[start];
 	if (finish < 0)
@@ -536,8 +618,8 @@ frcfd_out_and_return(const track_t *track, double bound, int *indexes)
 frcfd_triangle_plat(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
-    for (int tp1 = 0; tp1 < track->n - 1; ++tp1) {
-	if (track->sigma_delta[track->n - 1] - track->sigma_delta[tp1] < bound)
+    for (int tp1 = 0; tp1 < track->ntrkpts - 1; ++tp1) {
+	if (track->sigma_delta[track->ntrkpts - 1] - track->sigma_delta[tp1] < bound)
 	    break;
 	int start = track->best_start[tp1];
 	int finish = track->last_finish[start];
