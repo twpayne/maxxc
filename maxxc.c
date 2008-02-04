@@ -69,7 +69,18 @@ usage(void)
 	    "Usage: %s [options] [filename]\n"
 	    "Options:\n"
 	    "\t-h, --help\t\tprint usage and exit\n"
-	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n",
+	    "\t-l, --league=LEAGUE\tset league\n"
+	    "\t-c, --complexity=N\tset maximum flight complexity\n"
+	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n"
+	    "Leagues:\n"
+	    "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
+	    "\tukxcl\tCross Country League (UK)\n"
+	    "Complexities:\n"
+	    "\t0\tOpen distance\n"
+	    "\t1\tOpen distance via a turnpoint\n"
+	    "\t2\tOpen distance via two turnpoints, Out-and-return\n"
+	    "\t3\tOpen distance via three turnpoints, Flat triangle, FAI triangle\n"
+	    "\t4\tQuadrilateral\n",
 	    program_name, program_name);
 }
 
