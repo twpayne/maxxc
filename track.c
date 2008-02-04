@@ -742,7 +742,7 @@ track_frcfd_circuit_distance(const track_t *track, int n, int *indexes)
     result_t *
 track_optimize_frcfd(track_t *track)
 {
-    result_t *result = result_new();
+    result_t *result = result_new("Coupe F\303\251d\303\251rale de Distance (France)");
 
     int indexes[6];
     double bound;

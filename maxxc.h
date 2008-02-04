@@ -71,12 +71,13 @@ void route_push_wpt(route_t *, const wpt_t *);
 void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
 
 typedef struct {
+    const char *league;
     int nroutes;
     int routes_capacity;
     route_t *routes;
 } result_t;
 
-result_t *result_new(void);
+result_t *result_new(const char *);
 void result_delete(result_t *);
 route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
 void result_write_gpx(const result_t *, FILE *);

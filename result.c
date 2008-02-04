@@ -57,9 +57,10 @@ route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, co
 }
 
     result_t *
-result_new(void)
+result_new(const char *league)
 {
     result_t *result = alloc(sizeof(result_t));
+    result->league = league;
     return result;
 }
 
@@ -139,13 +140,11 @@ result_write_gpx(const result_t *result, FILE *file)
 {
     fprintf(file, "<?xml version=\"1.0\"?>\n");
     fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
-#if 0
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
-    fprintf(file, "\t\t\t<league></league>\n"); /* FIXME */
+    fprintf(file, "\t\t\t<league>%s</league>\n", result->league);
     fprintf(file, "\t\t</extensions>\n");
     fprintf(file, "\t</metadata>\n");
-#endif
     for (int i = 0; i < result->nroutes; ++i)
 	route_write_gpx(result->routes + i, file);
     fprintf(file, "</gpx>\n");
