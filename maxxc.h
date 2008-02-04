@@ -112,6 +112,7 @@ typedef struct {
 track_t *track_new_from_igc(FILE *) __attribute__ ((malloc));
 void track_compute_circuit_tables(track_t *, double);
 void track_delete(track_t *);
-result_t *track_optimize_frcfd(track_t *);
+result_t *track_optimize_frcfd(track_t *, int);
+result_t *track_optimize_ukxcl(track_t *, int);
 
 #endif

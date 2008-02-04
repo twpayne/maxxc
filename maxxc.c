@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -81,22 +82,36 @@ main(int argc, char *argv[])
     setenv("TZ", "UTC", 1);
     tzset();
 
+    const char *league = 0;
+    int complexity = -1;
     const char *output_filename = 0;
 
     opterr = 0;
     while (1) {
 	static struct option options[] = {
-	    { "help",    no_argument,       0, 'h' },
-	    { "output",  required_argument, 0, 'o' },
-	    { 0,         0,                 0, 0 },
+	    { "help",       no_argument,       0, 'h' },
+	    { "league",     required_argument, 0, 'l' },
+	    { "complexity", required_argument, 0, 'c' },
+	    { "output",     required_argument, 0, 'o' },
+	    { 0,            0,                 0, 0 },
 	};
-	int c = getopt_long(argc, argv, ":ho:", options, 0);
+	int c = getopt_long(argc, argv, ":hl:c:o:", options, 0);
 	if (c == -1)
 	    break;
+	char *endptr = 0;
 	switch (c) {
+	    case 'c':
+		errno = 0;
+		complexity = strtol(optarg, &endptr, 10);
+		if (errno || *endptr)
+		    error("invalid integer value '%s'", optarg);
+		break;
 	    case 'h':
 		usage();
 		return EXIT_SUCCESS;
+	    case 'l':
+		league = optarg;
+		break;
 	    case 'o':
 		output_filename = optarg;
 		break;
@@ -107,6 +122,16 @@ main(int argc, char *argv[])
 		break;
 	}
     }
+
+    result_t * (*track_optimize)(track_t *, int) = 0;
+    if (!league)
+	error("no league specified");
+    else if (!strcmp(league, "frcfd"))
+	track_optimize = track_optimize_frcfd;
+    else if (!strcmp(league, "ukxcl"))
+	track_optimize = track_optimize_ukxcl;
+    else
+	error("invalid league '%s'", optarg);
 
     const char *input_filename = 0;
     if (optind == argc)
@@ -128,7 +153,7 @@ main(int argc, char *argv[])
     if (input != stdin)
 	fclose(input);
 
-    result_t *result = track_optimize_frcfd(track);
+    result_t *result = track_optimize(track, complexity);
     track_delete(track);
 
     FILE *output;
