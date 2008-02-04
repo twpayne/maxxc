@@ -749,7 +749,7 @@ track_optimize_frcfd(track_t *track, int complexity)
 
     bound = track_open_distance(track, 0.0, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Distance libre", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, "Distance libre sans point de contournement", R * bound, 1.0, 0, 0);
 	const char *names[] = { "BD", "BA" };
 	route_push_trkpts(route, track->trkpts, 2, indexes, names);
     }
