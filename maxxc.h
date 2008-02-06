@@ -42,8 +42,6 @@ typedef struct {
     char *name;
 } wpt_t;
 
-void wpt_delete(wpt_t *);
-
 typedef struct {
     time_t time;
     int lat;
