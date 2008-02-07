@@ -157,7 +157,7 @@ track_write_gpx(const track_t *track, FILE *file)
     void
 result_write_gpx(const result_t *result, const track_t *track, FILE *file)
 {
-    fprintf(file, "<?xml version=\"1.0\"?>\n");
+    fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
