@@ -1,5 +1,13 @@
 #!/usr/bin/ruby
 
+# TODO embed IGC file in GPX
+# TODO read tracklog from GPX
+# TODO arrows on route
+# TODO icon styles for waypoints
+# TODO nice colours
+# TODO summary table with leg percentages
+# TODO loop gap
+
 require "enumerator"
 require "optparse"
 require "rexml/document"
