@@ -72,6 +72,7 @@ usage(void)
 	    "\t-l, --league=LEAGUE\tset league\n"
 	    "\t-c, --complexity=N\tset maximum flight complexity\n"
 	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n"
+	    "\t    --no-trk\t\tdon't embed tracklog in output\n"
 	    "Leagues:\n"
 	    "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
 	    "\tukxcl\tCross Country League (UK)\n"
@@ -96,6 +97,7 @@ main(int argc, char *argv[])
     const char *league = 0;
     int complexity = -1;
     const char *output_filename = 0;
+    int trk = 1;
 
     opterr = 0;
     while (1) {
@@ -104,6 +106,7 @@ main(int argc, char *argv[])
 	    { "league",     required_argument, 0, 'l' },
 	    { "complexity", required_argument, 0, 'c' },
 	    { "output",     required_argument, 0, 'o' },
+	    { "no-trk",     no_argument,       0, 't' },
 	    { 0,            0,                 0, 0 },
 	};
 	int c = getopt_long(argc, argv, ":hl:c:o:", options, 0);
@@ -125,6 +128,9 @@ main(int argc, char *argv[])
 		break;
 	    case 'o':
 		output_filename = optarg;
+		break;
+	    case 't':
+		trk = 0;
 		break;
 	    case ':':
 		error("option '%c' requires and argument", optopt);
@@ -165,7 +171,6 @@ main(int argc, char *argv[])
 	fclose(input);
 
     result_t *result = track_optimize(track, complexity);
-    track_delete(track);
 
     FILE *output;
     if (!output_filename || !strcmp(output_filename, "-")) {
@@ -175,11 +180,12 @@ main(int argc, char *argv[])
 	if (!output)
 	    error("fopen: %s: %s", output_filename, strerror(errno));
     }
-    result_write_gpx(result, output);
+    result_write_gpx(result, trk ? track : 0, output);
     if (output != stdout)
 	fclose(output);
 
     result_delete(result);
+    track_delete(track);
 
     return EXIT_SUCCESS;
 }

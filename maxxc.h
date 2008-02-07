@@ -51,8 +51,6 @@ typedef struct {
     int ele;
 } trkpt_t;
 
-void trkpt_to_wpt(const trkpt_t *, wpt_t *);
-
 typedef struct {
     const char *name;
     double distance;
@@ -64,21 +62,12 @@ typedef struct {
     wpt_t *wpts;
 } route_t;
 
-void route_delete(route_t *);
-void route_push_wpt(route_t *, const wpt_t *);
-void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
-
 typedef struct {
     const char *league;
     int nroutes;
     int routes_capacity;
     route_t *routes;
 } result_t;
-
-result_t *result_new(const char *);
-void result_delete(result_t *);
-route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
-void result_write_gpx(const result_t *, FILE *);
 
 typedef struct {
     double cos_lat;
@@ -106,6 +95,17 @@ typedef struct {
     int *last_finish;
     int *best_start;
 } track_t;
+
+void trkpt_to_wpt(const trkpt_t *, wpt_t *);
+
+void route_delete(route_t *);
+void route_push_wpt(route_t *, const wpt_t *);
+void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
+
+result_t *result_new(const char *);
+void result_delete(result_t *);
+route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
+void result_write_gpx(const result_t *, const track_t *, FILE *);
 
 track_t *track_new_from_igc(FILE *) __attribute__ ((malloc));
 void track_compute_circuit_tables(track_t *, double);

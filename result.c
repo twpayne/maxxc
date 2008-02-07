@@ -86,20 +86,26 @@ result_push_new_route(result_t *result, const char *name, double distance, doubl
 }
 
     static void
+time_write_gpx(time_t time, FILE *file, const char *prefix)
+{
+    if (time != (time_t) -1) {
+	struct tm tm;
+	if (!gmtime_r(&time, &tm))
+	    DIE("gmtime_r", errno);
+	char time[32];
+	if (!strftime(time, sizeof time, "%Y-%m-%dT%H:%M:%SZ", &tm))
+	    DIE("strftime", errno);
+	fprintf(file, "%s<time>%s</time>\n", prefix, time);
+    }
+}
+
+    static void
 wpt_write_gpx(const wpt_t *wpt, FILE *file, const char *type)
 {
     fprintf(file, "\t\t<%s lat=\"%.8f\" lon=\"%.8f\">\n", type, wpt->lat / 60000.0, wpt->lon / 60000.0);
     if (wpt->val == 'A')
 	fprintf(file, "\t\t\t<ele>%d</ele>\n", wpt->ele);
-    if (wpt->time != (time_t) -1) {
-	struct tm tm;
-	if (!gmtime_r(&wpt->time, &tm))
-	    DIE("gmtime_r", errno);
-	char time[32];
-	if (!strftime(time, sizeof time, "%Y-%m-%dT%H:%M:%SZ", &tm))
-	    DIE("strftime", errno);
-	fprintf(file, "\t\t\t<time>%s</time>\n", time);
-    }
+    time_write_gpx(wpt->time, file, "\t\t\t");
     if (wpt->name)
 	fprintf(file, "\t\t\t<name>%s</name>\n", wpt->name);
     fprintf(file, "\t\t\t<fix>%s</fix>\n", wpt->val == 'A' ? "3d" : "2d");
@@ -126,8 +132,30 @@ route_write_gpx(const route_t *route, FILE *file)
     fprintf(file, "\t</rte>\n");
 }
 
+    static void
+trkpt_write_gpx(const trkpt_t *trkpt, FILE *file)
+{
+    fprintf(file, "\t\t\t<trkpt lat=\"%.8f\" lon=\"%.8f\">\n", trkpt->lat / 60000.0, trkpt->lon / 60000.0);
+    if (trkpt->val == 'A')
+	fprintf(file, "\t\t\t\t<ele>%d</ele>\n", trkpt->ele);
+    time_write_gpx(trkpt->time, file, "\t\t\t\t");
+    fprintf(file, "\t\t\t\t<fix>%s</fix>\n", trkpt->val == 'A' ? "3d" : "2d");
+    fprintf(file, "\t\t\t</trkpt>\n");
+}
+
+    static void
+track_write_gpx(const track_t *track, FILE *file)
+{
+    fprintf(file, "\t<trk>\n");
+    fprintf(file, "\t\t<trkseg>\n");
+    for (int i = 0; i < track->ntrkpts; ++i)
+	trkpt_write_gpx(track->trkpts + i, file);
+    fprintf(file, "\t\t</trkseg>\n");
+    fprintf(file, "\t</trk>\n");
+}
+
     void
-result_write_gpx(const result_t *result, FILE *file)
+result_write_gpx(const result_t *result, const track_t *track, FILE *file)
 {
     fprintf(file, "<?xml version=\"1.0\"?>\n");
     fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
@@ -138,5 +166,7 @@ result_write_gpx(const result_t *result, FILE *file)
     fprintf(file, "\t</metadata>\n");
     for (int i = 0; i < result->nroutes; ++i)
 	route_write_gpx(result->routes + i, file);
+    if (track)
+	track_write_gpx(track, file);
     fprintf(file, "</gpx>\n");
 }
