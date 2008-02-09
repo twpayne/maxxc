@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 
 # TODO embed IGC file in GPX
-# TODO read tracklog from GPX
+# TODO embed IGC filename in GPX
 # TODO arrows on route
 # TODO icon styles for waypoints
 # TODO nice colours
@@ -20,7 +20,7 @@ class Symbol
 
 end
 
-module KML
+class KML
 
   class Element
 
@@ -38,11 +38,7 @@ module KML
     end
 
     def write(io)
-      if @text
-        io.write("<#{@tag}>#{@text}</#{@tag}>")
-      else
-        io.write("<#{@tag}/>")
-      end
+      io.write(@text ? "<#{@tag}>#{@text}</#{@tag}>" : "<#{@tag}/>")
     end
 
   end
@@ -66,16 +62,26 @@ module KML
     end
 
     def write(io)
-      io.write("<#{@tag}")
       if @children.empty?
-        io.write("/>")
+        io.write("<#{@tag}/>")
       else
-        io.write(">")
+        io.write("<#{@tag}>")
         @children.each { |child| child.write(io) }
         io.write("</#{@tag}>")
       end
     end
 
+  end
+
+  def initialize(root)
+    @root = root
+  end
+
+  def write(io)
+    io.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+    io.write("<kml xmlns=\"http://earth.google.com/kml/2.1\">")
+    @root.write(io)
+    io.write("</kml>")
   end
 
 end
@@ -88,10 +94,6 @@ class Coord
 
   def initialize(lat, lon, ele)
     @lat, @lon, @ele = lat, lon, ele
-  end
-
-  def to_kml
-    "%f,%f,%f" % [@lon, @lat, @ele]
   end
 
   def distance_to(coord)
@@ -116,25 +118,54 @@ class Coord
     Coord.new(180.0 * lat3 / Math::PI, 180.0 * lon3 / Math::PI, (@ele.to_f + coord.ele.to_f) / 2.0)
   end
 
+  def to_kml
+    "#{@lon},#{@lat},#{@ele}"
+  end
+
 end
 
 class GPX
 
-  class Wpt
+  class Trk
 
-    attr_reader :coord
-
-    def initialize(wpt)
-      lat = wpt.attributes["lat"]
-      lon = wpt.attributes["lon"]
-      @coord = Coord.new(lat, lon, 0)
-      @name = wpt.elements["name"].text
-      @time = wpt.elements["time"].text
+    def initialize(trk)
+      @trkpts = []
+      trk.elements.each("trkseg/trkpt") { |trkpt| @trkpts << TrkPt.new(trkpt) }
     end
 
     def to_kml
-      placemark = KML::E.new(:Placemark, :name => @name)
-      placemark << KML::E.new(:Point, :coordinates => @coord.to_kml)
+      folder = KML::E.new(:Folder, :name => "Track", :open => 1)
+      folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
+      track_2d = KML::E.new(:Placemark, :name => "2D", :visibility => 0)
+      track_2d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
+      coordinates = @trkpts.collect(&:to_kml).join(" ")
+      track_2d << KML::E.new(:LineString, :altitudeMode => :clampToGroup, :coordinates => coordinates)
+      folder << track_2d
+      folder_3d = KML::E.new(:Folder, :name => "3D")
+      folder_3d << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :checkHideChildren))
+      track_3d = KML::E.new(:Placemark)
+      track_3d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
+      track_3d << KML::E.new(:LineString, :altitudeMode => :absolute, :coordinates => coordinates)
+      folder_3d << track_3d
+      shadow = KML::E.new(:Placemark)
+      shadow << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff000000"))
+      shadow << KML::E.new(:LineString, :altitudeMode => :clampToGround, :coordinates => coordinates)
+      folder_3d << shadow
+      folder << folder_3d
+    end
+
+  end
+
+  class TrkPt
+
+    def initialize(trkpt)
+      @lat = trkpt.attributes["lat"]
+      @lon = trkpt.attributes["lon"]
+      @ele = trkpt.elements["ele"] ? trkpt.elements["ele"].text : 0
+    end
+
+    def to_kml
+      "#{@lon},#{@lat},#{@ele || 0}"
     end
 
   end
@@ -154,8 +185,9 @@ class GPX
       rte.elements.each("rtept") { |rtept| @rtepts << Wpt.new(rtept) }
     end
 
-    def to_kml
+    def to_kml(options = {})
       folder = KML::E.new(:Folder,
+        options,
         :name => "#{@name} (#{@score} points, #{@distance}km)",
         :Snippet => nil,
         :description => 
@@ -167,9 +199,7 @@ class GPX
           "</table>" +
           "]]>")
       folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :checkHideChildren))
-      @rtepts.each do |rtept|
-        folder << rtept.to_kml
-      end
+      @rtepts.each { |rtept| folder << rtept.to_kml }
       if @circuit
         coords = (@rtepts[1...-1] << @rtepts[1]).collect(&:coord)
       else
@@ -197,66 +227,47 @@ class GPX
 
   end
 
+  class Wpt
+
+    attr_reader :coord
+
+    def initialize(wpt)
+      lat = wpt.attributes["lat"]
+      lon = wpt.attributes["lon"]
+      @coord = Coord.new(lat, lon, 0)
+      @name = wpt.elements["name"].text
+      @time = wpt.elements["time"].text
+    end
+
+    def to_kml
+      placemark = KML::E.new(:Placemark, :name => @name)
+      placemark << KML::E.new(:Point, :coordinates => @coord.to_kml)
+    end
+
+  end
+
   def initialize(io)
+    @name = nil
     document = REXML::Document.new(io)
     @league = document.elements["gpx/metadata/extensions/league"].text
     @rtes = []
     document.elements.each("gpx/rte") { |rte| @rtes << Rte.new(rte) }
     @rtes = @rtes.sort_by { |rte| -rte.score.to_f }
+    @trk = Trk.new(document.elements["gpx/trk"]) if document.elements["gpx/trk"]
   end
 
   def to_kml
     folder = KML::E.new(:Folder, :name => @league, :open => 1)
-    folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
-    @rtes.each { |rte| folder << rte.to_kml }
-    folder
-  end
-
-end
-
-class IGC
-
-  def initialize(io)
-    @name = io.path
-    @coords = []
-    mday = mon = year = nil
-    io.each do |line|
-      case line
-      when /\AHFDTE(\d\d)(\d\d)(\d\d)\r\n\z/
-        mday = $1.to_i
-        mon = $2.to_i
-        year = 2000 + $3.to_i
-      when /\AB(\d\d)(\d\d)(\d\d)(\d\d)(\d{5})([NS])(\d\d\d)(\d{5})([EW])([AV])(\d{5})(\d{5})\d+\r\n\z/
-        time = Time.utc(year, mon, mday, $1.to_i, $2.to_i, $3.to_i)
-        lat = $4.to_i + $5.to_i / 60000.0
-        lat = -lat if $6 == "S"
-        lon = $7.to_i + $8.to_i / 60000.0
-        lon = -lon if $9 == "W"
-        ele = $12.to_i
-        @coords << Coord.new(lat, lon, ele)
-      end
+    rte_folder = KML::E.new(:Folder, :name => "Routes", :open => 1)
+    rte_folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
+    visibility = 1
+    @rtes.each do |rte|
+      rte_folder << rte.to_kml(:visibility => visibility)
+      visibility = 0
     end
-  end
-
-  def to_kml
-    folder = KML::E.new(:Folder, :name => @name, :open => 1)
-    folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
-    tracklog_2d = KML::E.new(:Placemark, :name => "2D tracklog")
-    tracklog_2d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
-    coordinates = @coords.collect(&:to_kml).join(" ")
-    tracklog_2d << KML::E.new(:LineString, :altitudeMode => :clampToGroup, :coordinates => coordinates)
-    folder << tracklog_2d
-    folder_3d = KML::E.new(:Folder, :name => "3D tracklog")
-    folder_3d << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :checkHideChildren))
-    tracklog_3d = KML::E.new(:Placemark)
-    tracklog_3d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
-    tracklog_3d << KML::E.new(:LineString, :altitudeMode => :absolute, :coordinates => coordinates)
-    folder_3d << tracklog_3d
-    shadow = KML::E.new(:Placemark)
-    shadow << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff000000"))
-    shadow << KML::E.new(:LineString, :altitudeMode => :clampToGround, :coordinates => coordinates)
-    folder_3d << shadow
-    folder << folder_3d
+    folder << rte_folder
+    folder << @trk.to_kml if @trk
+    folder
   end
 
 end
@@ -273,24 +284,11 @@ def main(argv)
     end
     op.parse!(argv)
   end
-  document = KML::E.new(:Document)
-  document << GPX.new($stdin).to_kml
-  argv.each do |arg|
-    case arg
-    when /\.igc\z/i then File.open(arg) { |io| document << IGC.new(io).to_kml }
-    else raise arg
-    end
-  end
-  kml = KML::E.new(:kml) #, :xmlns => "http://earth.google.com/kml/2.1")
-  kml << document
+  kml = KML.new(KML::E.new(:Document, GPX.new($stdin).to_kml))
   if !output_filename or output_filename == "-"
-    $stdout.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     kml.write($stdout)
   else
-    File.open(output_filename, "w") do |output|
-      output.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-      kml.write(output)
-    end
+    File.open(output_filename, "w") { |io| kml.write(io) }
   end
 end
 
