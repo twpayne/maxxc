@@ -186,19 +186,26 @@ class GPX
     end
 
     def to_kml(options = {})
-      folder = KML::E.new(:Folder,
-        options,
-        :name => "#{@name} (#{@score} points, #{@distance}km)",
-        :Snippet => nil,
-        :description => 
-          "<![CDATA[" +
-          "<table>" +
-          "<tr><td>Distance</td><td>#{@distance}km</td></tr>" +
-          "<tr><td>Multiplier</td><td>\xc3\x97 #{@multiplier} points/km</td></tr>" +
-          "<tr><td>Score</td><td>#{@score} points</td></tr>" +
-          "</table>" +
-          "]]>")
+      folder = KML::E.new(:Folder, options, :name => "#{@name} (#{@score} points, #{@distance}km)", :Snippet => nil)
       folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :checkHideChildren))
+      rows = []
+      if @circuit
+        @rtepts[1...-1].each_cons(2) do |rtept1, rtept2|
+          leg_distance = rtept1.distance_to(rtept2)
+          rows << ["#{rtept1.name} \xe2\x86\x92 #{rtept2.name}", "%.3fkm (%.1f%%)" % [leg_distance, 100.0 * leg_distance / @distance.to_f]]
+        end
+        leg_distance = @rtepts[-2].distance_to(@rtepts[1])
+        rows << ["#{@rtepts[-2].name} \xe2\x86\x92 #{@rtepts[1].name}", "%.3fkm (%.1f%%)" % [leg_distance, 100.0 * leg_distance / @distance.to_f]]
+        rows << ["#{@rtepts[-1].name} \xe2\x86\x92 #{@rtepts[0].name}", "%.3fkm" % @rtepts[-1].distance_to(@rtepts[0])]
+      else
+        @rtepts.each_cons(2) do |rtept1, rtept2|
+          rows << ["#{rtept1.name} \xe2\x86\x92 #{rtept2.name}", "%.3fkm" % rtept1.distance_to(rtept2)]
+        end
+      end
+      rows << ["Distance", "#{@distance}km"]
+      rows << ["Multiplier", "\xc3\x97 #{@multiplier}/km"]
+      rows << ["Score", "<b>#{@score}</b>"]
+      folder << KML::Simple.new(:description, "<![CDATA[<table>" + rows.collect { |cells| "<tr>" + cells.collect { |cell| "<td>#{cell}</td>" }.join + "</tr>" }.join + "</table>]]>")
       @rtepts.each { |rtept| folder << rtept.to_kml }
       if @circuit
         coords = (@rtepts[1...-1] << @rtepts[1]).collect(&:coord)
@@ -229,7 +236,7 @@ class GPX
 
   class Wpt
 
-    attr_reader :coord
+    attr_reader :coord, :name
 
     def initialize(wpt)
       lat = wpt.attributes["lat"]
@@ -237,6 +244,10 @@ class GPX
       @coord = Coord.new(lat, lon, 0)
       @name = wpt.elements["name"].text
       @time = wpt.elements["time"].text
+    end
+
+    def distance_to(other)
+      @coord.distance_to(other.coord)
     end
 
     def to_kml
