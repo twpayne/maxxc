@@ -2,9 +2,6 @@
 
 # TODO embed IGC file in GPX
 # TODO embed IGC filename in GPX
-# TODO icon styles for waypoints
-# TODO nice colours
-# TODO loop gap
 
 require "enumerator"
 require "optparse"
@@ -46,10 +43,18 @@ class KML
     def initialize(tag, *args)
       super(tag)
       @children = []
+      @attributes = {}
       args.each do |arg|
         case arg
-        when Hash then arg.each { |key, value| @children << Simple.new(key, value) }
-        else @children << arg
+        when Hash
+          arg.each do |key, value|
+            case key
+            when :attributes then @attributes.merge!(value)
+            else @children << Simple.new(key, value)
+            end
+          end
+        else
+          @children << arg
         end
       end
     end
@@ -60,10 +65,14 @@ class KML
     end
 
     def write(io)
+      io.write("<#{@tag}")
+      @attributes.each do |key, value|
+        io.write(" #{key}=\"#{value}\"")
+      end
       if @children.empty?
-        io.write("<#{@tag}/>")
+        io.write("/>")
       else
-        io.write("<#{@tag}>")
+        io.write(">")
         @children.each { |child| child.write(io) }
         io.write("</#{@tag}>")
       end
@@ -77,9 +86,7 @@ class KML
 
   def write(io)
     io.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-    io.write("<kml xmlns=\"http://earth.google.com/kml/2.1\">")
     @root.write(io)
-    io.write("</kml>")
   end
 
 end
@@ -151,19 +158,16 @@ class GPX
     def to_kml
       folder = KML::E.new(:Folder, :name => "Track", :open => 1)
       folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
-      track_2d = KML::E.new(:Placemark, :name => "2D", :visibility => 0)
-      track_2d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
+      track_2d = KML::E.new(:Placemark, :name => "2D", :visibility => 0, :styleUrl => :track)
       coordinates = @trkpts.collect(&:to_kml).join(" ")
       track_2d << KML::E.new(:LineString, :altitudeMode => :clampToGroup, :coordinates => coordinates)
       folder << track_2d
       folder_3d = KML::E.new(:Folder, :name => "3D")
       folder_3d << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :checkHideChildren))
-      track_3d = KML::E.new(:Placemark)
-      track_3d << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff0000cc", :width => 2))
+      track_3d = KML::E.new(:Placemark, :styleUrl => :track)
       track_3d << KML::E.new(:LineString, :altitudeMode => :absolute, :coordinates => coordinates)
       folder_3d << track_3d
-      shadow = KML::E.new(:Placemark)
-      shadow << (KML::E.new(:Style) << KML::E.new(:LineStyle, :color => "ff000000"))
+      shadow = KML::E.new(:Placemark, :styleUrl => :shadow)
       shadow << KML::E.new(:LineString, :altitudeMode => :clampToGround, :coordinates => coordinates)
       folder_3d << shadow
       folder << folder_3d
@@ -223,27 +227,31 @@ class GPX
       folder << KML::Simple.new(:description, "<![CDATA[<table>" + rows.collect { |cells| "<tr>" + cells.collect { |cell| "<td>#{cell}</td>" }.join + "</tr>" }.join + "</table>]]>")
       @rtepts.each { |rtept| folder << rtept.to_kml }
       coords = (@circuit ? @rtepts[1...-1].push(@rtepts[1]) : @rtepts).collect(&:coord)
-      route = KML::E.new(:Placemark)
-      route << (KML::E.new(:Style) << KML::E.new(:LineStyle, :width => 2))
-      route << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => coords.collect(&:to_kml).join(" "))
-      folder << route
       coords.each_cons(2) do |coord1, coord2|
-        placemark = KML::E.new(:Placemark, :name => "%.2fkm" % coord1.distance_to(coord2))
+        placemark = KML::E.new(:Placemark, :name => "%.2fkm" % coord1.distance_to(coord2), :styleUrl => :rte)
         multi_geometry = KML::E.new(:MultiGeometry)
         multi_geometry << KML::E.new(:Point, :coordinates => coord1.halfway_to(coord2).to_kml)
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [coord1, coord2].collect(&:to_kml).join(" "))
         bearing = coord2.initial_bearing_to(coord1)
-        arrow_head = KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [coord2.coord_at(bearing - Math::PI / 12.0, 0.4), coord2, coord2.coord_at(bearing + Math::PI / 12.0, 0.4)].collect(&:to_kml).join(" "))
-        multi_geometry << arrow_head
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [coord2.coord_at(bearing - Math::PI / 12.0, 0.2), coord2, coord2.coord_at(bearing + Math::PI / 12.0, 0.2)].collect(&:to_kml).join(" "))
         placemark << multi_geometry
         folder << placemark
       end
       if @circuit
-        start = KML::E.new(:Placemark)
-        start << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[0], @rtepts[1]].collect(&:coord).collect(&:to_kml).join(" "))
-        folder << start
-        finish = KML::E.new(:Placemark)
-        finish << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[-2], @rtepts[-1]].collect(&:coord).collect(&:to_kml).join(" "))
-        folder << finish
+        placemark = KML::E.new(:Placemark, :styleUrl => :rte2)
+        multi_geometry = KML::E.new(:MultiGeometry)
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[0], @rtepts[1]].collect(&:coord).collect(&:to_kml).join(" "))
+        bearing = @rtepts[1].coord.initial_bearing_to(@rtepts[0].coord)
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[1].coord.coord_at(bearing - Math::PI / 12.0, 0.2), @rtepts[1].coord, @rtepts[1].coord.coord_at(bearing + Math::PI / 12.0, 0.2)].collect(&:to_kml).join(" "))
+        placemark << multi_geometry
+        folder << placemark
+        placemark = KML::E.new(:Placemark, :styleUrl => :rte2)
+        multi_geometry = KML::E.new(:MultiGeometry)
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[-2], @rtepts[-1]].collect(&:coord).collect(&:to_kml).join(" "))
+        bearing = @rtepts[-1].coord.initial_bearing_to(@rtepts[-2].coord)
+        multi_geometry << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [@rtepts[-1].coord.coord_at(bearing - Math::PI / 12.0, 0.2), @rtepts[-1].coord, @rtepts[-1].coord.coord_at(bearing + Math::PI / 12.0, 0.2)].collect(&:to_kml).join(" "))
+        placemark << multi_geometry
+        folder << placemark
       end
       folder
     end
@@ -267,7 +275,7 @@ class GPX
     end
 
     def to_kml
-      placemark = KML::E.new(:Placemark, :name => @name)
+      placemark = KML::E.new(:Placemark, :name => @name, :styleUrl => :rte)
       placemark << KML::E.new(:Point, :coordinates => @coord.to_kml)
     end
 
@@ -311,7 +319,21 @@ def main(argv)
     end
     op.parse!(argv)
   end
-  kml = KML.new(KML::E.new(:Document, GPX.new($stdin).to_kml))
+  document = KML::E.new(:Document)
+  document << (KML::E.new(:Style, :attributes => {:id => :track}) << KML::E.new(:LineStyle, :color => "ffff00ff", :width => 2))
+  document << (KML::E.new(:Style, :attributes => {:id => :shadow}) << KML::E.new(:LineStyle, :color => "ff000000"))
+  style = KML::E.new(:Style, :attributes => {:id => :rte}) 
+  style << (KML::E.new(:IconStyle, :color => "ff00ffff", :scale => 0.5) << KML::E.new(:Icon, :href => "http://maps.google.com/mapfiles/kml/pal4/icon24.png"))
+  style << KML::E.new(:LabelStyle, :color => "ff00ffff")
+  style << KML::E.new(:LineStyle, :color => "ff00ffff")
+  document << style
+  style = KML::E.new(:Style, :attributes => {:id => :rte2}) 
+  style << (KML::E.new(:IconStyle, :color => "8000ffff", :scale => 0.5) << KML::E.new(:Icon, :href => "http://maps.google.com/mapfiles/kml/pal4/icon24.png"))
+  style << KML::E.new(:LabelStyle, :color => "8000ffff")
+  style << KML::E.new(:LineStyle, :color => "8000ffff")
+  document << style
+  document << GPX.new($stdin).to_kml
+  kml = KML.new(KML::E.new(:kml, document, :attributes => {:xmlns => "http://earth.google.com/kml/2.1"}))
   if !output_filename or output_filename == "-"
     kml.write($stdout)
   else
