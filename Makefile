@@ -9,6 +9,7 @@ OBJS=$(SRCS:%.c=%.o)
 LIBS=-lm
 BINS=maxxc
 DOCS=COPYING
+EXTRA_BINS=maxxc-gpx2kml
 
 .PHONY: all clean install tarball
 
@@ -16,14 +17,14 @@ all: $(BINS)
 
 tarball:
 	mkdir maxxc-$(VERSION)
-	cp Makefile $(SRCS) $(HEADERS) $(DOCS) maxxc-$(VERSION)
+	cp Makefile $(SRCS) $(HEADERS) $(DOCS) $(EXTRA_BINS) maxxc-$(VERSION)
 	tar -czf maxxc-$(VERSION).tar.gz maxxc-$(VERSION)
 	rm -Rf maxxc-$(VERSION)
 
 install: $(BINS)
-	@echo "  INSTALL maxxc"
+	@echo "  INSTALL maxxc $(EXTRA_BINS)"
 	@mkdir -p $(PREFIX)/bin
-	@cp maxxc $(PREFIX)/bin/maxxc
+	@cp maxxc $(EXTRA_BINS) $(PREFIX)/bin
 
 maxxc: $(OBJS)
 
