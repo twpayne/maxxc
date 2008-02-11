@@ -2,10 +2,8 @@
 
 # TODO embed IGC file in GPX
 # TODO embed IGC filename in GPX
-# TODO arrows on route
 # TODO icon styles for waypoints
 # TODO nice colours
-# TODO summary table with leg percentages
 # TODO loop gap
 
 require "enumerator"
@@ -96,6 +94,15 @@ class Coord
     @lat, @lon, @ele = lat, lon, ele
   end
 
+  def coord_at(bearing, distance)
+    lat1 = Math::PI * @lat.to_f / 180.0
+    lon1 = Math::PI * @lon.to_f / 180.0
+    d_div_R = distance / R
+    lat2 = Math.asin(Math.sin(lat1) * Math.cos(d_div_R) + Math.cos(lat1) * Math.sin(d_div_R) * Math.cos(bearing))
+    lon2 = lon1 + Math.atan2(Math.sin(bearing) * Math.sin(d_div_R) * Math.cos(lat1), Math.cos(d_div_R) - Math.sin(lat1) * Math.sin(lat2))
+    Coord.new(180 * lat2 / Math::PI, 180.0 * lon2 / Math::PI, @ele)
+  end
+
   def distance_to(coord)
     lat1 = Math::PI * @lat.to_f / 180.0
     lon1 = Math::PI * @lon.to_f / 180.0
@@ -116,6 +123,14 @@ class Coord
     lat3 = Math.atan2(Math.sin(lat1) + Math.sin(lat2), Math.sqrt(cos_lat1_plus_bx * cos_lat1_plus_bx + by * by))
     lon3 = lon1 + Math.atan2(by, cos_lat1_plus_bx)
     Coord.new(180.0 * lat3 / Math::PI, 180.0 * lon3 / Math::PI, (@ele.to_f + coord.ele.to_f) / 2.0)
+  end
+
+  def initial_bearing_to(coord)
+    lat1 = Math::PI * @lat.to_f / 180.0
+    lon1 = Math::PI * @lon.to_f / 180.0
+    lat2 = Math::PI * coord.lat.to_f / 180.0
+    lon2 = Math::PI * coord.lon.to_f / 180.0
+    Math.atan2(Math.sin(lon2 - lon1) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1))
   end
 
   def to_kml
@@ -207,18 +222,19 @@ class GPX
       rows << ["Score", "<b>#{@score}</b>"]
       folder << KML::Simple.new(:description, "<![CDATA[<table>" + rows.collect { |cells| "<tr>" + cells.collect { |cell| "<td>#{cell}</td>" }.join + "</tr>" }.join + "</table>]]>")
       @rtepts.each { |rtept| folder << rtept.to_kml }
-      if @circuit
-        coords = (@rtepts[1...-1] << @rtepts[1]).collect(&:coord)
-      else
-        coords = @rtepts.collect(&:coord)
-      end
+      coords = (@circuit ? @rtepts[1...-1].push(@rtepts[1]) : @rtepts).collect(&:coord)
       route = KML::E.new(:Placemark)
       route << (KML::E.new(:Style) << KML::E.new(:LineStyle, :width => 2))
       route << KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => coords.collect(&:to_kml).join(" "))
       folder << route
       coords.each_cons(2) do |coord1, coord2|
         placemark = KML::E.new(:Placemark, :name => "%.2fkm" % coord1.distance_to(coord2))
-        placemark << KML::E.new(:Point, :coordinates => coord1.halfway_to(coord2).to_kml)
+        multi_geometry = KML::E.new(:MultiGeometry)
+        multi_geometry << KML::E.new(:Point, :coordinates => coord1.halfway_to(coord2).to_kml)
+        bearing = coord2.initial_bearing_to(coord1)
+        arrow_head = KML::E.new(:LineString, :altitudeMode => :clampToGround, :tessellate => 1, :coordinates => [coord2.coord_at(bearing - Math::PI / 12.0, 0.4), coord2, coord2.coord_at(bearing + Math::PI / 12.0, 0.4)].collect(&:to_kml).join(" "))
+        multi_geometry << arrow_head
+        placemark << multi_geometry
         folder << placemark
       end
       if @circuit
