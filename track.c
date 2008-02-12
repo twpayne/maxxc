@@ -311,13 +311,6 @@ match_until_eol(const char *p)
     return *p == '\n' ? ++p : 0;
 }
 
-    static inline const char *
-match_eos(const char *p)
-{
-    if (!p) return 0;
-    return *p ? p : 0;
-}
-
     static const char *
 match_b_record(const char *p, struct tm *tm, trkpt_t *trkpt)
 {
