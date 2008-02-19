@@ -448,9 +448,10 @@ track_push_task_wpt(track_t *track, const wpt_t *task_wpt)
 }
 
     track_t *
-track_new_from_igc(FILE *file)
+track_new_from_igc(const char *filename, FILE *file)
 {
     track_t *track = alloc(sizeof(track_t));
+    track->filename = filename;
 
     struct tm tm;
     memset(&tm, 0, sizeof tm);
@@ -460,6 +461,15 @@ track_new_from_igc(FILE *file)
     memset(&wpt, 0, sizeof wpt);
     char record[1024];
     while (fgets(record, sizeof record, file)) {
+	int n = strlen(record);
+	if (track->igc_size + n > track->igc_capacity) {
+	    track->igc_capacity = track->igc_capacity ? 2 * track->igc_capacity : 131072;
+	    track->igc = realloc(track->igc, track->igc_capacity);
+	    if (!track->igc)
+		DIE("realloc", errno);
+	}
+	memcpy(track->igc + track->igc_size, record, n);
+	track->igc_size += n;
 	switch (record[0]) {
 	    case 'B':
 		if (match_b_record(record, &tm, &trkpt))
@@ -494,6 +504,7 @@ track_delete(track_t *track)
 	free(track->after);
 	free(track->best_start);
 	free(track->last_finish);
+	free(track->igc);
 	free(track);
     }
 }

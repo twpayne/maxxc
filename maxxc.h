@@ -94,6 +94,10 @@ typedef struct {
     limit_t *after;
     int *last_finish;
     int *best_start;
+    const char *filename;
+    int igc_size;
+    int igc_capacity;
+    char *igc;
 } track_t;
 
 void trkpt_to_wpt(const trkpt_t *, wpt_t *);
@@ -105,9 +109,9 @@ void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
 result_t *result_new(const char *);
 void result_delete(result_t *);
 route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
-void result_write_gpx(const result_t *, const track_t *, FILE *);
+void result_write_gpx(const result_t *, const track_t *, int, int, FILE *);
 
-track_t *track_new_from_igc(FILE *) __attribute__ ((malloc));
+track_t *track_new_from_igc(const char *, FILE *) __attribute__ ((malloc));
 void track_compute_circuit_tables(track_t *, double);
 void track_delete(track_t *);
 result_t *track_optimize_frcfd(track_t *, int);

@@ -155,18 +155,24 @@ track_write_gpx(const track_t *track, FILE *file)
 }
 
     void
-result_write_gpx(const result_t *result, const track_t *track, FILE *file)
+result_write_gpx(const result_t *result, const track_t *track, int embed_igc, int embed_trk, FILE *file)
 {
     fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
     fprintf(file, "\t\t\t<league>%s</league>\n", result->league);
+    fprintf(file, "\t\t\t<filename>%s</filename>\n", track->filename);
+    if (embed_igc) {
+	fprintf(file, "\t\t\t<igc><![CDATA[");
+	fwrite(track->igc, track->igc_size, sizeof(char), file);
+	fprintf(file, "]]></igc>\n");
+    }
     fprintf(file, "\t\t</extensions>\n");
     fprintf(file, "\t</metadata>\n");
     for (int i = 0; i < result->nroutes; ++i)
 	route_write_gpx(result->routes + i, file);
-    if (track)
+    if (embed_trk)
 	track_write_gpx(track, file);
     fprintf(file, "</gpx>\n");
 }

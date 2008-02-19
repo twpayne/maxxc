@@ -72,7 +72,8 @@ usage(void)
 	    "\t-l, --league=LEAGUE\tset league\n"
 	    "\t-c, --complexity=N\tset maximum flight complexity\n"
 	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n"
-	    "\t    --no-trk\t\tdon't embed tracklog in output\n"
+	    "\t-i, --embed-igc\t\tembed IGC in output\n"
+	    "\t-t, --embed-trk\t\tembed tracklog in output\n"
 	    "Leagues:\n"
 	    "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
 	    "\tukxcl\tCross Country League (UK)\n"
@@ -96,8 +97,10 @@ main(int argc, char *argv[])
 
     const char *league = 0;
     int complexity = -1;
+    const char *filename = 0;
     const char *output_filename = 0;
-    int trk = 1;
+    int embed_trk = 0;
+    int embed_igc = 0;
 
     opterr = 0;
     while (1) {
@@ -106,10 +109,11 @@ main(int argc, char *argv[])
 	    { "league",     required_argument, 0, 'l' },
 	    { "complexity", required_argument, 0, 'c' },
 	    { "output",     required_argument, 0, 'o' },
-	    { "no-trk",     no_argument,       0, 't' },
+	    { "embed-igc",  no_argument,       0, 'i' },
+	    { "embed-trk",  no_argument,       0, 't' },
 	    { 0,            0,                 0, 0 },
 	};
-	int c = getopt_long(argc, argv, ":hl:c:o:", options, 0);
+	int c = getopt_long(argc, argv, ":hl:c:o:it", options, 0);
 	if (c == -1)
 	    break;
 	char *endptr = 0;
@@ -123,6 +127,9 @@ main(int argc, char *argv[])
 	    case 'h':
 		usage();
 		return EXIT_SUCCESS;
+	    case 'i':
+		embed_igc = 1;
+		break;
 	    case 'l':
 		league = optarg;
 		break;
@@ -130,7 +137,7 @@ main(int argc, char *argv[])
 		output_filename = optarg;
 		break;
 	    case 't':
-		trk = 0;
+		embed_trk = 1;
 		break;
 	    case ':':
 		error("option '%c' requires and argument", optopt);
@@ -166,7 +173,13 @@ main(int argc, char *argv[])
 	if (!input)
 	    error("fopen: %s: %s", input_filename, strerror(errno));
     }
-    track_t *track = track_new_from_igc(input);
+    if (input_filename) {
+	filename = strrchr(input_filename, '/');
+	filename = filename ? filename + 1 : filename;
+    } else {
+	filename = "";
+    }
+    track_t *track = track_new_from_igc(filename, input);
     if (input != stdin)
 	fclose(input);
 
@@ -180,7 +193,7 @@ main(int argc, char *argv[])
 	if (!output)
 	    error("fopen: %s: %s", output_filename, strerror(errno));
     }
-    result_write_gpx(result, trk ? track : 0, output);
+    result_write_gpx(result, track, embed_igc, embed_trk, output);
     if (output != stdout)
 	fclose(output);
 
