@@ -73,7 +73,7 @@ usage(void)
 	    "\t-c, --complexity=N\tset maximum flight complexity\n"
 	    "\t-o, --output=FILENAME\tset output filename (default is stdout)\n"
 	    "\t-i, --embed-igc\t\tembed IGC in output\n"
-	    "\t-t, --embed-trk\t\tembed tracklog in output\n"
+	    "\t-t, --embed-trk\t\tembed GPX tracklog in output\n"
 	    "Leagues:\n"
 	    "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
 	    "\tukxcl\tCross Country League (UK)\n"
