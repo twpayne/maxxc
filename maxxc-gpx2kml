@@ -1,8 +1,5 @@
 #!/usr/bin/ruby
 
-# TODO embed IGC file in GPX
-# TODO embed IGC filename in GPX
-
 require "enumerator"
 require "optparse"
 require "rexml/document"
