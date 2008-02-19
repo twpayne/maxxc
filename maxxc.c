@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 	filename = strrchr(input_filename, '/');
 	filename = filename ? filename + 1 : filename;
     } else {
-	filename = "";
+	filename = 0;
     }
     track_t *track = track_new_from_igc(filename, input);
     if (input != stdin)

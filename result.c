@@ -162,7 +162,8 @@ result_write_gpx(const result_t *result, const track_t *track, int embed_igc, in
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
     fprintf(file, "\t\t\t<league>%s</league>\n", result->league);
-    fprintf(file, "\t\t\t<filename>%s</filename>\n", track->filename);
+    if (track->filename)
+	fprintf(file, "\t\t\t<filename>%s</filename>\n", track->filename);
     if (embed_igc) {
 	fprintf(file, "\t\t\t<igc><![CDATA[");
 	fwrite(track->igc, track->igc_size, sizeof(char), file);
