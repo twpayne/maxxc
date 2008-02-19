@@ -768,9 +768,6 @@ track_optimize_frcfd(track_t *track, int complexity)
 	route_push_trkpts(route, track->trkpts, 3, indexes, names);
     }
 
-    if (complexity && complexity < 3)
-	return result;
-
     if (complexity != -1 && complexity < 2)
 	return result;
 
@@ -809,6 +806,8 @@ track_optimize_frcfd(track_t *track, int complexity)
 	static const char *names[] = { "BD", "B1", "B2", "B3", "BA" };
 	route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }
+
+    /* TODO track_frcfd_quadrilatere */
 
     return result;
 }
