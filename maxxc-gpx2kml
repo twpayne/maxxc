@@ -282,6 +282,8 @@ class GPX
     @name = nil
     document = REXML::Document.new(io)
     @league = document.elements["gpx/metadata/extensions/league"].text
+    @filename = document.elements["gpx/metadata/extensions/filename"]
+    @filename = @filename ? @filename.text : "(stdin)"
     @rtes = []
     document.elements.each("gpx/rte") { |rte| @rtes << Rte.new(rte) }
     @rtes = @rtes.sort_by { |rte| -rte.score.to_f }
@@ -289,7 +291,7 @@ class GPX
   end
 
   def to_kml
-    folder = KML::E.new(:Folder, :name => @league, :open => 1)
+    folder = KML::E.new(:Folder, :name => @filename, :open => 1)
     rte_folder = KML::E.new(:Folder, :name => "Routes", :open => 1)
     rte_folder << (KML::E.new(:Style) << KML::E.new(:ListStyle, :listItemType => :radioFolder))
     visibility = 1
