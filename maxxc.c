@@ -155,7 +155,7 @@ main(int argc, char *argv[])
     else if (!strcmp(league, "ukxcl"))
 	track_optimize = track_optimize_ukxcl;
     else
-	error("invalid league '%s'", optarg);
+	error("invalid league '%s'", league);
 
     const char *input_filename = 0;
     if (optind == argc)
