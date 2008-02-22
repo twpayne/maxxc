@@ -1,0 +1,45 @@
+#!/usr/bin/ruby
+
+require "optparse"
+require "rexml/document"
+
+Rte = Struct.new(:name, :distance, :score, :multiplier, :circuit, :declared)
+
+class Symbol
+
+  def to_proc
+    lambda { |object| object.send(self) }
+  end
+
+end
+
+def main(argv)
+  output_filename = nil
+  OptionParser.new do |op|
+    op.on("--help", "print usage and exit") do
+      print(op)
+      return
+    end
+    op.on("--output=FILENAME", String, "output filename") do |arg|
+      output_filename = arg
+    end
+    op.parse!(argv)
+  end
+  document = REXML::Document.new(ARGF.read)
+  rtes = []
+  document.elements.each("gpx/rte") do |rte|
+    name = rte.elements["name"].text
+    distance = rte.elements["extensions/distance"].text
+    score = rte.elements["extensions/score"].text
+    multiplier = rte.elements["extensions/multiplier"].text
+    circuit = rte.elements["extensions/circuit"] and true
+    declared = rte.elements["extensions/declared"] and true
+    rtes << Rte.new(name, distance, score, multiplier, circuit, declared)
+  end
+  rtes.sort_by(&:score).reverse.each do |rte|
+    puts("%s\t%sx\t%s\t%s" % [rte.score, rte.multiplier, rte.distance, rte.name])
+  end
+  nil
+end
+
+exit(main(ARGV) || 0) if $0 == __FILE__

@@ -9,7 +9,7 @@ OBJS=$(SRCS:%.c=%.o)
 LIBS=-lm
 BINS=maxxc
 DOCS=COPYING
-EXTRA_BINS=maxxc-gpx2kml
+EXTRA_BINS=maxxc-gpx2kml maxxc-gpx2txt
 
 .PHONY: all clean install tarball
 
