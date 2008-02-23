@@ -5,14 +5,6 @@ require "rexml/document"
 
 Rte = Struct.new(:name, :distance, :score, :multiplier, :circuit, :declared)
 
-class Symbol
-
-  def to_proc
-    lambda { |object| object.send(self) }
-  end
-
-end
-
 def main(argv)
   output_filename = nil
   OptionParser.new do |op|
@@ -36,7 +28,7 @@ def main(argv)
     declared = rte.elements["extensions/declared"] and true
     rtes << Rte.new(name, distance, score, multiplier, circuit, declared)
   end
-  rtes.sort_by(&:score).reverse.each do |rte|
+  rtes.sort_by { |rte| rte.score.to_f }.reverse.each do |rte|
     puts("%s\t%sx\t%s\t%s" % [rte.score, rte.multiplier, rte.distance, rte.name])
   end
   nil
