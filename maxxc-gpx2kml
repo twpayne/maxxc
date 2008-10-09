@@ -192,6 +192,7 @@ class GPX
 
     def initialize(rte)
       @name = rte.elements["name"].text
+      @league = rte.elements["extensions/league"].text
       @distance = rte.elements["extensions/distance"].text
       @score = rte.elements["extensions/score"].text
       @multiplier = rte.elements["extensions/multiplier"].text
@@ -281,7 +282,6 @@ class GPX
   def initialize(io)
     @name = nil
     document = REXML::Document.new(io)
-    @league = document.elements["gpx/metadata/extensions/league"].text
     @filename = document.elements["gpx/metadata/extensions/filename"]
     @filename = @filename ? @filename.text : "(stdin)"
     @rtes = []
