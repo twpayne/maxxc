@@ -52,6 +52,7 @@ typedef struct {
 } trkpt_t;
 
 typedef struct {
+    const char *league;
     const char *name;
     double distance;
     double multiplier;
@@ -63,7 +64,6 @@ typedef struct {
 } route_t;
 
 typedef struct {
-    const char *league;
     int nroutes;
     int routes_capacity;
     route_t *routes;
@@ -106,9 +106,9 @@ void route_delete(route_t *);
 void route_push_wpt(route_t *, const wpt_t *);
 void route_push_trkpts(route_t *, const trkpt_t *, int, int *, const char **);
 
-result_t *result_new(const char *);
+result_t *result_new();
 void result_delete(result_t *);
-route_t *result_push_new_route(result_t *, const char *, double, double, int, int);
+route_t *result_push_new_route(result_t *, const char *, const char *, double, double, int, int);
 void result_write_gpx(const result_t *, const track_t *, int, int, FILE *);
 
 track_t *track_new_from_igc(const char *, FILE *) __attribute__ ((malloc));

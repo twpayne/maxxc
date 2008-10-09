@@ -746,14 +746,15 @@ track_frcfd_circuit_distance(const track_t *track, int n, int *indexes)
     result_t *
 track_optimize_frcfd(track_t *track, int complexity)
 {
-    result_t *result = result_new("Coupe F\303\251d\303\251rale de Distance (France)");
+    static const char *league = "Coupe F\303\251d\303\251rale de Distance (France)";
+    result_t *result = result_new();
 
     int indexes[6];
     double bound;
 
     bound = track_open_distance(track, 0.0, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Distance libre sans point de contournement", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, league, "Distance libre sans point de contournement", R * bound, 1.0, 0, 0);
 	const char *names[] = { "BD", "BA" };
 	route_push_trkpts(route, track->trkpts, 2, indexes, names);
     }
@@ -763,7 +764,7 @@ track_optimize_frcfd(track_t *track, int complexity)
 
     bound = track_open_distance1(track, bound, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Distance libre avec un point de contournement", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, league, "Distance libre avec un point de contournement", R * bound, 1.0, 0, 0);
 	const char *names[] = { "BD", "B1", "BA" };
 	route_push_trkpts(route, track->trkpts, 3, indexes, names);
     }
@@ -773,7 +774,7 @@ track_optimize_frcfd(track_t *track, int complexity)
 
     bound = track_open_distance2(track, bound, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Distance libre avec deux points de contournement", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, league, "Distance libre avec deux points de contournement", R * bound, 1.0, 0, 0);
 	const char *names[] = { "BD", "B1", "B2", "BA" };
 	route_push_trkpts(route, track->trkpts, 4, indexes, names);
     }
@@ -783,7 +784,7 @@ track_optimize_frcfd(track_t *track, int complexity)
     bound = track_frcfd_aller_retour(track, 15.0 / R, indexes);
     if (indexes[0] != -1) {
 	double distance = track_frcfd_circuit_distance(track, 4, indexes);
-	route_t *route = result_push_new_route(result, "Parcours en aller-retour", distance, 1.2, 1, 0);
+	route_t *route = result_push_new_route(result, league, "Parcours en aller-retour", distance, 1.2, 1, 0);
 	static const char *names[] = { "BD", "B1", "B2", "BA" };
 	route_push_trkpts(route, track->trkpts, 4, indexes, names);
     }
@@ -794,7 +795,7 @@ track_optimize_frcfd(track_t *track, int complexity)
     bound = track_frcfd_triangle_fai(track, bound, indexes);
     if (indexes[0] != -1) {
 	double distance = track_frcfd_circuit_distance(track, 5, indexes);
-	route_t *route = result_push_new_route(result, "Triangle FAI", distance, 1.4, 1, 0);
+	route_t *route = result_push_new_route(result, league, "Triangle FAI", distance, 1.4, 1, 0);
 	static const char *names[] = { "BD", "B1", "B2", "B3", "BA" };
 	route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }
@@ -802,7 +803,7 @@ track_optimize_frcfd(track_t *track, int complexity)
     bound = track_frcfd_triangle_plat(track, bound, indexes);
     if (indexes[0] != -1) {
 	double distance = track_frcfd_circuit_distance(track, 5, indexes);
-	route_t *route = result_push_new_route(result, "Triangle plat", distance, 1.2, 1, 0);
+	route_t *route = result_push_new_route(result, league, "Triangle plat", distance, 1.2, 1, 0);
 	static const char *names[] = { "BD", "B1", "B2", "B3", "BA" };
 	route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }
@@ -815,14 +816,15 @@ track_optimize_frcfd(track_t *track, int complexity)
     result_t *
 track_optimize_ukxcl(track_t *track, int complexity)
 {
-    result_t *result = result_new("Cross Country League (United Kingdom)");
+    static const char *league = "Cross Country League (United Kingdom)";
+    result_t *result = result_new();
 
     int indexes[6];
     double bound;
 
     bound = track_open_distance(track, 10.0 / R, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Open distance", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, league, "Open distance", R * bound, 1.0, 0, 0);
 	const char *names[] = { "Start", "Finish" };
 	route_push_trkpts(route, track->trkpts, 2, indexes, names);
     }
@@ -834,7 +836,7 @@ track_optimize_ukxcl(track_t *track, int complexity)
 	bound = 15.0 / R;
     bound = track_open_distance3(track, bound, indexes);
     if (indexes[0] != -1) {
-	route_t *route = result_push_new_route(result, "Turnpoint flight", R * bound, 1.0, 0, 0);
+	route_t *route = result_push_new_route(result, league, "Turnpoint flight", R * bound, 1.0, 0, 0);
 	const char *names[] = { "Start", "TP1", "TP2", "TP3", "Finish" };
 	route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }

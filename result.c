@@ -48,10 +48,9 @@ route_push_trkpts(route_t *route, const trkpt_t *trkpts, int n, int *indexes, co
 }
 
     result_t *
-result_new(const char *league)
+result_new(void)
 {
     result_t *result = alloc(sizeof(result_t));
-    result->league = league;
     return result;
 }
 
@@ -67,7 +66,7 @@ result_delete(result_t *result)
 }
 
     route_t *
-result_push_new_route(result_t *result, const char *name, double distance, double multiplier, int circuit, int declared)
+result_push_new_route(result_t *result, const char *league, const char *name, double distance, double multiplier, int circuit, int declared)
 {
     if (result->nroutes == result->routes_capacity) {
 	result->routes_capacity = result->routes_capacity ? 2 * result->routes_capacity : 8;
@@ -77,6 +76,7 @@ result_push_new_route(result_t *result, const char *name, double distance, doubl
     }
     route_t *route = result->routes + result->nroutes++;
     memset(route, 0, sizeof(route_t));
+    route->league = league;
     route->name = name;
     route->distance = distance;
     route->multiplier = multiplier;
@@ -119,6 +119,7 @@ route_write_gpx(const route_t *route, FILE *file)
     if (route->name)
 	fprintf(file, "\t\t<name>%s</name>\n", route->name);
     fprintf(file, "\t\t<extensions>\n");
+    fprintf(file, "\t\t\t<league>%s</league>\n", route->league);
     fprintf(file, "\t\t\t<distance>%.3f</distance>\n", route->distance);
     fprintf(file, "\t\t\t<multiplier>%.1f</multiplier>\n", route->multiplier);
     fprintf(file, "\t\t\t<score>%.2f</score>\n", route->distance * route->multiplier);
@@ -161,7 +162,6 @@ result_write_gpx(const result_t *result, const track_t *track, int embed_igc, in
     fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
-    fprintf(file, "\t\t\t<league>%s</league>\n", result->league);
     if (track->filename)
 	fprintf(file, "\t\t\t<filename>%s</filename>\n", track->filename);
     if (embed_igc) {
