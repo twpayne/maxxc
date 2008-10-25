@@ -108,7 +108,6 @@ wpt_write_gpx(const wpt_t *wpt, FILE *file, const char *type)
     time_write_gpx(wpt->time, file, "\t\t\t");
     if (wpt->name)
 	fprintf(file, "\t\t\t<name>%s</name>\n", wpt->name);
-    fprintf(file, "\t\t\t<fix>%s</fix>\n", wpt->val == 'A' ? "3d" : "2d");
     fprintf(file, "\t\t</%s>\n", type);
 }
 
@@ -140,7 +139,6 @@ trkpt_write_gpx(const trkpt_t *trkpt, FILE *file)
     if (trkpt->val == 'A')
 	fprintf(file, "\t\t\t\t<ele>%d</ele>\n", trkpt->ele);
     time_write_gpx(trkpt->time, file, "\t\t\t\t");
-    fprintf(file, "\t\t\t\t<fix>%s</fix>\n", trkpt->val == 'A' ? "3d" : "2d");
     fprintf(file, "\t\t\t</trkpt>\n");
 }
 
@@ -159,7 +157,7 @@ track_write_gpx(const track_t *track, FILE *file)
 result_write_gpx(const result_t *result, const track_t *track, int embed_igc, int embed_trk, FILE *file)
 {
     fprintf(file, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    fprintf(file, "<gpx version=\"1.1\" creator=\"http://code.google.com/p/maxxc/\">\n");
+    fprintf(file, "<gpx creator=\"http://code.google.com/p/maxxc/\" version=\"1.1\" xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\">\n");
     fprintf(file, "\t<metadata>\n");
     fprintf(file, "\t\t<extensions>\n");
     if (track->filename)
