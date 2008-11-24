@@ -1,0 +1,105 @@
+maxxc - maximise cross country flights
+Copyright (C) 2008  Tom Payne
+
+
+
+INTRODUCTION
+
+maxxc is a program to maximise cross country flights.  Given an IGC file, it
+finds the largest open distance (via up to three turnpoints), out-and-return
+and triangular flights according to various cross country league rules.
+
+The output is in GPX format and a program is provided to convert this into KML
+format for viewing in Google Earth.
+
+This software is designed to be used on XC league servers, it is not designed
+for end users.
+
+
+
+QUICK START
+
+Type "make" to build the software and "make install" (as root) to install it.
+
+To run the software use:
+	maxxc -l league IGC-FILENAME.igc
+The only required parameter is -l to set the XC league.  The currently
+supported leagues are:
+	frcfd	Coupe Fédérale de Distance (France)
+	ukxcl	Cross Country League (UK)
+maxxc will read the IGC file, calculate the largest flights and write a GPX
+file to the standard output.  You can send the output to a file using either
+the -o option or redirection.
+
+
+
+VISUALISING IN GOOGLE EARTH
+
+The program maxxc-gpx2kml reads a GPX file produced by maxxc from the standard
+input and produces a nice Google Earth KML file as output.  You probably want
+to specify the -t option to maxxc to include the tracklog in the GPX file,
+otherwise you'll just see the optimised flights.
+
+For example:
+	maxxc -l frcfd -t IGC-FILENAME.igc | maxxc-gpx2kml > KML-FILENAME.kml
+
+maxxc-gpx2kml requires Ruby (http://www.ruby-lang.org/).
+
+
+
+ALGORITHM NOTES
+
+The algorithm is basically the same as optigc:
+	http://freenet-homepage.de/streckenflug/optigc.html
+Some speed-ups have been added, and the algorithm has been adapted to
+different league rules.
+
+The algorithm is deterministic and should always find the largest flight.
+Please inform the author if you find any counter-examples.
+
+In some cases the optimisation can take a VERY long time!  A particularly
+difficult class to optimise is CFD flat triangles when the tracklog is
+basically an out-and-return.  Flat triangles have very few constraints and so
+maxxc has to consider thousands of nearly identical flat triangles, which
+takes a long time.
+
+I haven't yet written a detailed description of the algorithm, sorry!
+
+
+
+COMPARISONS WITH OTHER FLIGHT OPTIMISATION SOFTWARE
+
+maxxc should always find the longest flight.
+
+Both CompeGPS (http://www.compegps.com/) and parawing.net
+(http://carnet.parawing.net/form_conv_public.php) seem to use a geometric
+algorithm or heuristics which are fast and wrong.
+
+XContest (http://www.xcontest.org/) seem to have an algorithm that is both
+correct and very fast.  maxxc has room for improvement!
+
+
+
+AUTHOR
+
+Tom Payne <twpayne@gmail.com>
+Based on an algorithm developed by Thomas Kuhlmann.
+
+
+
+LICENSE
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# vim: set spell spelllang=en textwidth=78:
