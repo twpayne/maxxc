@@ -538,16 +538,16 @@ track_open_distance1(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = -1;
     for (int tp1 = 1; tp1 < track->ntrkpts - 1; ) {
-        double total = track->before[tp1].distance + track->after[tp1].distance;
-        if (total > bound) {
-            indexes[0] = track->before[tp1].index;
-            indexes[1] = tp1;
-            indexes[2] = track->after[tp1].index;
-            bound = total;
-            ++tp1;
-        } else {
-            tp1 = track_fast_forward(track, tp1, 0.5 * (bound - total));
-        }
+	double total = track->before[tp1].distance + track->after[tp1].distance;
+	if (total > bound) {
+	    indexes[0] = track->before[tp1].index;
+	    indexes[1] = tp1;
+	    indexes[2] = track->after[tp1].index;
+	    bound = total;
+	    ++tp1;
+	} else {
+	    tp1 = track_fast_forward(track, tp1, 0.5 * (bound - total));
+	}
     }
     return bound;
 }

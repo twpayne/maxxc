@@ -105,13 +105,13 @@ main(int argc, char *argv[])
     opterr = 0;
     while (1) {
 	static struct option options[] = {
-	    { "help",       no_argument,       0, 'h' },
+	    { "help",	    no_argument,       0, 'h' },
 	    { "league",     required_argument, 0, 'l' },
 	    { "complexity", required_argument, 0, 'c' },
 	    { "output",     required_argument, 0, 'o' },
 	    { "embed-igc",  no_argument,       0, 'i' },
 	    { "embed-trk",  no_argument,       0, 't' },
-	    { 0,            0,                 0, 0 },
+	    { 0,	    0,		       0, 0 },
 	};
 	int c = getopt_long(argc, argv, ":hl:c:o:it", options, 0);
 	if (c == -1)
