@@ -181,6 +181,7 @@ track_last_at_least(const track_t *track, int i, int begin, int end, double boun
 track_initialize(track_t *track)
 {
     track->coords = alloc(track->ntrkpts * sizeof(coord_t));
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < track->ntrkpts; ++i) {
 	double lat = M_PI * track->trkpts[i].lat / (180 * 60000);
 	double lon = M_PI * track->trkpts[i].lon / (180 * 60000);
@@ -190,26 +191,35 @@ track_initialize(track_t *track)
     }
     track->max_delta = 0.0;
     track->sigma_delta = alloc(track->ntrkpts * sizeof(double));
-    double sigma_delta = 0.0;
+    track->sigma_delta[0] = 0.0;
     for (int i = 1; i < track->ntrkpts; ++i) {
-	track->sigma_delta[i] = sigma_delta;
 	double delta = track_delta(track, i - 1, i);
-	sigma_delta += delta;
-	track->sigma_delta[i] = sigma_delta;
+	track->sigma_delta[i] = track->sigma_delta[i - 1] + delta;
 	if (delta > track->max_delta)
 	    track->max_delta = delta;
     }
-    track->before = alloc(track->ntrkpts * sizeof(limit_t));
-    track->before[0].index = 0;
-    track->before[0].distance = 0.0;
-    for (int i = 1; i < track->ntrkpts; ++i)
-	track->before[i].index = track_furthest_from(track, i, 0, i, track->before[i - 1].distance - track->max_delta, &track->before[i].distance);
-    track->after = alloc(track->ntrkpts * sizeof(limit_t));
-    track->after[0].index = track_furthest_from(track, 0, 1, track->ntrkpts, 0.0, &track->after[0].distance);
-    for (int i = 1; i < track->ntrkpts - 1; ++i)
-	track->after[i].index = track_furthest_from(track, i, i + 1, track->ntrkpts, track->after[i - 1].distance - track->max_delta, &track->after[i].distance);
-    track->after[track->ntrkpts - 1].index = track->ntrkpts - 1;
-    track->after[track->ntrkpts - 1].distance = 0.0;
+#pragma omp parallel sections
+    {
+#pragma omp section
+	{
+#pragma omp critical
+	    track->before = alloc(track->ntrkpts * sizeof(limit_t));
+	    track->before[0].index = 0;
+	    track->before[0].distance = 0.0;
+	    for (int i = 1; i < track->ntrkpts; ++i)
+		track->before[i].index = track_furthest_from(track, i, 0, i, track->before[i - 1].distance - track->max_delta, &track->before[i].distance);
+	}
+#pragma omp section
+	{
+#pragma omp critical
+	    track->after = alloc(track->ntrkpts * sizeof(limit_t));
+	    track->after[0].index = track_furthest_from(track, 0, 1, track->ntrkpts, 0.0, &track->after[0].distance);
+	    for (int i = 1; i < track->ntrkpts - 1; ++i)
+		track->after[i].index = track_furthest_from(track, i, i + 1, track->ntrkpts, track->after[i - 1].distance - track->max_delta, &track->after[i].distance);
+	    track->after[track->ntrkpts - 1].index = track->ntrkpts - 1;
+	    track->after[track->ntrkpts - 1].distance = 0.0;
+	}
+    }
 }
 
     void
@@ -546,23 +556,26 @@ track_open_distance1(const track_t *track, double bound, int *indexes)
 track_open_distance2(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
+#pragma omp parallel for schedule(dynamic)
     for (int tp1 = 1; tp1 < track->ntrkpts - 2; ++tp1) {
 	double leg1 = track->before[tp1].distance;
-	double bound23 = bound - leg1;
 	for (int tp2 = tp1 + 1; tp2 < track->ntrkpts - 1; ) {
-	    double leg23 = track_delta(track, tp1, tp2) + track->after[tp2].distance;
-	    if (leg23 > bound23) {
+	    double distance = leg1 + track_delta(track, tp1, tp2) + track->after[tp2].distance;
+	    int new_bound = 0;
+#pragma omp critical
+	    if (distance > bound) {
+		new_bound = 1;
+		bound = distance;
 		indexes[0] = track->before[tp1].index;
 		indexes[1] = tp1;
 		indexes[2] = tp2;
 		indexes[3] = track->after[tp2].index;
-		bound23 = leg23;
-		++tp2;
-	    } else {
-		tp2 = track_fast_forward(track, tp2, 0.5 * (bound23 - leg23));
 	    }
+	    if (new_bound)
+		++tp2;
+	    else
+		tp2 = track_fast_forward(track, tp2, 0.5 * (bound - distance));
 	}
-	bound = leg1 + bound23;
     }
     return bound;
 }
@@ -571,29 +584,30 @@ track_open_distance2(const track_t *track, double bound, int *indexes)
 track_open_distance3(const track_t *track, double bound, int *indexes)
 {
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = indexes[4] = -1;
+#pragma omp parallel for schedule(dynamic)
     for (int tp1 = 1; tp1 < track->ntrkpts - 3; ++tp1) {
 	double leg1 = track->before[tp1].distance;
-	double bound234 = bound - leg1;
 	for (int tp2 = tp1 + 1; tp2 < track->ntrkpts - 2; ++tp2) {
 	    double leg2 = track_delta(track, tp1, tp2);
-	    double bound34 = bound234 - leg2;
 	    for (int tp3 = tp2 + 1; tp3 < track->ntrkpts - 1; ) {
-		double legs34 = track_delta(track, tp2, tp3) + track->after[tp3].distance;
-		if (legs34 > bound34) {
+		double distance = leg1 + leg2 + track_delta(track, tp2, tp3) + track->after[tp3].distance;
+		int new_bound = 0;
+#pragma omp critical
+		if (distance > bound) {
+		    new_bound = 1;
+		    bound = distance;
 		    indexes[0] = track->before[tp1].index;
 		    indexes[1] = tp1;
 		    indexes[2] = tp2;
 		    indexes[3] = tp3;
 		    indexes[4] = track->after[tp3].index;
-		    bound34 = legs34;
-		    ++tp3;
-		} else {
-		    tp3 = track_fast_forward(track, tp3, 0.5 * (bound34 - legs34));
 		}
+		if (new_bound)
+		    ++tp3;
+		else
+		    tp3 = track_fast_forward(track, tp3, 0.5 * (bound - distance));
 	    }
-	    bound234 = leg2 + bound34;
 	}
-	bound = leg1 + bound234;
     }
     return bound;
 }
@@ -603,19 +617,26 @@ track_frcfd_aller_retour(const track_t *track, double bound, int *indexes)
 {
     bound /= 2.0;
     indexes[0] = indexes[1] = indexes[2] = indexes[3] = -1;
+#pragma omp parallel for schedule(dynamic)
     for (int tp1 = 0; tp1 < track->ntrkpts - 2; ++tp1) {
 	int start = track->best_start[tp1];
 	int finish = track->last_finish[start];
 	if (finish < 0)
 	    continue;
-	double leg = 0.0;
-	int tp2 = track_furthest_from(track, tp1, tp1 + 1, finish + 1, bound, &leg);
+	double distance = 0.0;
+	double local_bound;
+#pragma omp critical
+	local_bound = bound;
+	int tp2 = track_furthest_from(track, tp1, tp1 + 1, finish + 1, local_bound, &distance);
 	if (tp2 >= 0) {
-	    indexes[0] = start;
-	    indexes[1] = tp1;
-	    indexes[2] = tp2;
-	    indexes[3] = finish;
-	    bound = leg;
+#pragma omp critical
+	    if (distance > bound) {
+		bound = distance;
+		indexes[0] = start;
+		indexes[1] = tp1;
+		indexes[2] = tp2;
+		indexes[3] = finish;
+	    }
 	}
     }
     return 2.0 * bound;
