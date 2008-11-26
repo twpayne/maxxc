@@ -1,7 +1,7 @@
 PREFIX=/usr/local
 
 CC=gcc
-CFLAGS=-g -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
+CFLAGS=-O2 -fopenmp -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
 
 SRCS=maxxc.c result.c track.c
 HEADERS=maxxc.h
