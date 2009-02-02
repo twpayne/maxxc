@@ -26,6 +26,7 @@ To run the software use:
 The only required parameter is -l to set the XC league.  The currently
 supported leagues are:
 	frcfd	Coupe Fédérale de Distance (France)
+	uknxcl	National Cross Country League (UK)
 	ukxcl	Cross Country League (UK)
 maxxc will read the IGC file, calculate the largest flights and write a GPX
 file to the standard output.  You can send the output to a file using either

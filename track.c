@@ -835,6 +835,74 @@ track_optimize_frcfd(track_t *track, int complexity)
 }
 
     result_t *
+track_optimize_uknxcl(track_t *track, int complexity)
+{
+    static const char *league = "UK National XC League";
+    result_t *result = result_new();
+
+    int indexes[6];
+    double bound;
+
+    bound = track_open_distance(track, 0.0, indexes);
+    if (indexes[0] != -1) {
+        route_t *route = result_push_new_route(result, league, "open distance", R * bound, 1.0, 0, 0);
+        const char *names[] = { "Start", "Finish" };
+        route_push_trkpts(route, track->trkpts, 2, indexes, names);
+    }
+
+    if (complexity != -1 && complexity < 1)
+        return result;
+
+    bound = track_open_distance1(track, bound, indexes);
+    if (indexes[0] != -1) {
+        route_t *route = result_push_new_route(result, league, "open distance via a turnpoint", R * bound, 1.0, 0, 0);
+        const char *names[] = { "Start", "TP1", "Finish" };
+        route_push_trkpts(route, track->trkpts, 3, indexes, names);
+    }
+
+    if (complexity != -1 && complexity < 2)
+        return result;
+
+    bound = track_open_distance2(track, bound, indexes);
+    if (indexes[0] != -1) {
+        route_t *route = result_push_new_route(result, league, "open distance via two turnpoints", R * bound, 1.0, 0, 0);
+        const char *names[] = { "Start", "TP1", "TP2", "Finish" };
+        route_push_trkpts(route, track->trkpts, 4, indexes, names);
+    }
+
+    track_compute_circuit_tables(track, 0.4 / R);
+
+    bound = track_frcfd_aller_retour(track, 15.0 / R, indexes);
+    if (indexes[0] != -1) {
+        double distance = track_frcfd_circuit_distance(track, 4, indexes);
+        route_t *route = result_push_new_route(result, league, "out and return via a turnpoint", distance, 1.2, 1, 0);
+        static const char *names[] = { "Start", "TP1", "TP2", "Finish" };
+        route_push_trkpts(route, track->trkpts, 4, indexes, names);
+    }
+
+    if (complexity != -1 && complexity < 3)
+        return result;
+
+    bound = track_frcfd_triangle_fai(track, bound, indexes);
+    if (indexes[0] != -1) {
+        double distance = track_frcfd_circuit_distance(track, 5, indexes);
+        route_t *route = result_push_new_route(result, league, "FAI triangle", distance, 1.4, 1, 0);
+        static const char *names[] = { "Start", "TP1", "TP2", "TP3", "Finish" };
+        route_push_trkpts(route, track->trkpts, 5, indexes, names);
+    }
+
+    bound = track_frcfd_triangle_plat(track, bound, indexes);
+    if (indexes[0] != -1) {
+        double distance = track_frcfd_circuit_distance(track, 5, indexes);
+        route_t *route = result_push_new_route(result, league, "out and return via two turnpoints", distance, 1.2, 1, 0);
+        static const char *names[] = { "Start", "TP1", "TP2", "TP3", "Finish" };
+        route_push_trkpts(route, track->trkpts, 5, indexes, names);
+    }
+
+    return result;
+}
+
+    result_t *
 track_optimize_ukxcl(track_t *track, int complexity)
 {
     static const char *league = "Cross Country League (United Kingdom)";
