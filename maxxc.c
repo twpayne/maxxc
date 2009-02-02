@@ -76,6 +76,7 @@ usage(void)
             "\t-t, --embed-trk\t\tembed GPX tracklog in output\n"
             "Leagues:\n"
             "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
+            "\tuknxcl\tNational Cross Country League (UK)\n"
             "\tukxcl\tCross Country League (UK)\n"
             "Complexities:\n"
             "\t0\tOpen distance\n"
@@ -152,6 +153,8 @@ main(int argc, char *argv[])
         error("no league specified");
     else if (!strcmp(league, "frcfd"))
         track_optimize = track_optimize_frcfd;
+    else if (!strcmp(league, "uknxcl"))
+        track_optimize = track_optimize_uknxcl;
     else if (!strcmp(league, "ukxcl"))
         track_optimize = track_optimize_ukxcl;
     else
