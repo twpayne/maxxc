@@ -875,7 +875,7 @@ track_optimize_uknxcl(track_t *track, int complexity)
     bound = track_frcfd_aller_retour(track, 15.0 / R, indexes);
     if (indexes[0] != -1) {
         double distance = track_frcfd_circuit_distance(track, 4, indexes);
-        route_t *route = result_push_new_route(result, league, "out and return via a turnpoint", distance, 1.2, 1, 0);
+        route_t *route = result_push_new_route(result, league, "out and return via a turnpoint", distance, 2.0, 1, 0);
         static const char *names[] = { "Start", "TP1", "TP2", "Finish" };
         route_push_trkpts(route, track->trkpts, 4, indexes, names);
     }
@@ -886,7 +886,7 @@ track_optimize_uknxcl(track_t *track, int complexity)
     bound = track_frcfd_triangle_fai(track, bound, indexes);
     if (indexes[0] != -1) {
         double distance = track_frcfd_circuit_distance(track, 5, indexes);
-        route_t *route = result_push_new_route(result, league, "FAI triangle", distance, 1.4, 1, 0);
+        route_t *route = result_push_new_route(result, league, "FAI triangle", distance, 2.5, 1, 0);
         static const char *names[] = { "Start", "TP1", "TP2", "TP3", "Finish" };
         route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }
@@ -894,7 +894,7 @@ track_optimize_uknxcl(track_t *track, int complexity)
     bound = track_frcfd_triangle_plat(track, bound, indexes);
     if (indexes[0] != -1) {
         double distance = track_frcfd_circuit_distance(track, 5, indexes);
-        route_t *route = result_push_new_route(result, league, "out and return via two turnpoints", distance, 1.2, 1, 0);
+        route_t *route = result_push_new_route(result, league, "out and return via two turnpoints", distance, 2.0, 1, 0);
         static const char *names[] = { "Start", "TP1", "TP2", "TP3", "Finish" };
         route_push_trkpts(route, track->trkpts, 5, indexes, names);
     }
