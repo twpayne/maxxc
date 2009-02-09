@@ -29,7 +29,7 @@ class Track {
 
 	# return the index of the first point which is at most $distance km from point $i
 	function forward($i, $distance) {
-		$step = $distance / $this->max_delta;
+		$step = intval($distance / $this->max_delta);
 		return $step > 0 ? $i + $step : ++$i;
 	}
 
