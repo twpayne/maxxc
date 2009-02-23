@@ -1,12 +1,12 @@
 PREFIX=/usr/local
 
 CC=gcc
-CFLAGS=-O2 -fopenmp -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
+CFLAGS=-g -fopenmp -Wall -Wextra -Wno-unused -std=c99 -D_GNU_SOURCE
 
-SRCS=maxxc.c result.c track.c
+SRCS=declaration.c maxxc.c result.c string_buffer.c track.c
 HEADERS=maxxc.h
 OBJS=$(SRCS:%.c=%.o)
-LIBS=-lm
+LIBS=-lexpat -lm
 BINS=maxxc
 DOCS=COPYING
 EXTRA_BINS=maxxc-gpx2kml maxxc-gpx2txt

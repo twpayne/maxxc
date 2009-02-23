@@ -68,12 +68,13 @@ usage(void)
     printf("%s - maximise cross country flights\n"
             "Usage: %s [options] [filename]\n"
             "Options:\n"
-            "\t-h, --help\t\tprint usage and exit\n"
-            "\t-l, --league=LEAGUE\tset league\n"
-            "\t-c, --complexity=N\tset maximum flight complexity\n"
-            "\t-o, --output=FILENAME\tset output filename (default is stdout)\n"
-            "\t-i, --embed-igc\t\tembed IGC in output\n"
-            "\t-t, --embed-trk\t\tembed GPX tracklog in output\n"
+            "\t-h, --help\t\t\tprint usage and exit\n"
+            "\t-l, --league=LEAGUE\t\tset league\n"
+            "\t-c, --complexity=N\t\tset maximum flight complexity\n"
+	    "\t-d, --declaration=FILENAME\tset flight declaration\n"
+            "\t-o, --output=FILENAME\t\tset output filename (default is stdout)\n"
+            "\t-i, --embed-igc\t\t\tembed IGC in output\n"
+            "\t-t, --embed-trk\t\t\tembed GPX tracklog in output\n"
             "Leagues:\n"
             "\tfrcfd\tCoupe F\303\251d\303\251rale de Distance (France)\n"
             "\tuknxcl\tNational Cross Country League (UK)\n"
@@ -98,6 +99,7 @@ main(int argc, char *argv[])
 
     const char *league = 0;
     int complexity = -1;
+    declaration_t *declaration = 0;
     const char *filename = 0;
     const char *output_filename = 0;
     int embed_trk = 0;
@@ -106,15 +108,16 @@ main(int argc, char *argv[])
     opterr = 0;
     while (1) {
         static struct option options[] = {
-            { "help",            no_argument,       0, 'h' },
-            { "league",     required_argument, 0, 'l' },
-            { "complexity", required_argument, 0, 'c' },
-            { "output",     required_argument, 0, 'o' },
-            { "embed-igc",  no_argument,       0, 'i' },
-            { "embed-trk",  no_argument,       0, 't' },
-            { 0,            0,                       0, 0 },
+            { "help",        no_argument,       0, 'h' },
+            { "league",      required_argument, 0, 'l' },
+            { "complexity",  required_argument, 0, 'c' },
+            { "declaration", required_argument, 0, 'd' },
+            { "output",      required_argument, 0, 'o' },
+            { "embed-igc",   no_argument,       0, 'i' },
+            { "embed-trk",   no_argument,       0, 't' },
+            { 0,             0,                       0, 0 },
         };
-        int c = getopt_long(argc, argv, ":hl:c:o:it", options, 0);
+        int c = getopt_long(argc, argv, ":hl:c:d:o:it", options, 0);
         if (c == -1)
             break;
         char *endptr = 0;
@@ -125,6 +128,17 @@ main(int argc, char *argv[])
                 if (errno || *endptr)
                     error("invalid integer value '%s'", optarg);
                 break;
+	    case 'd':
+		{
+		    if (declaration)
+			declaration_free(declaration);
+		    FILE *file = fopen(optarg, "r");
+		    if (!file)
+			DIE("fopen", errno);
+		    declaration = declaration_new_from_file(file);
+		    fclose(file);
+		}
+		break;
             case 'h':
                 usage();
                 return EXIT_SUCCESS;
@@ -148,7 +162,7 @@ main(int argc, char *argv[])
         }
     }
 
-    result_t * (*track_optimize)(track_t *, int) = 0;
+    result_t * (*track_optimize)(track_t *, int, const declaration_t *) = 0;
     if (!league)
         error("no league specified");
     else if (!strcmp(league, "frcfd"))
@@ -186,7 +200,7 @@ main(int argc, char *argv[])
     if (input != stdin)
         fclose(input);
 
-    result_t *result = track_optimize(track, complexity);
+    result_t *result = track_optimize(track, complexity, declaration);
 
     FILE *output;
     if (!output_filename || !strcmp(output_filename, "-")) {

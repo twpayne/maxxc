@@ -35,14 +35,20 @@ trkpt_to_wpt(const trkpt_t *trkpt, wpt_t *wpt)
     wpt->val = trkpt->val;
 }
 
+__attribute__ ((nonnull(1, 2))) __attribute__ ((pure))
+    static inline double
+coord_delta(const coord_t *coord1, const coord_t *coord2)
+{
+    double x = coord1->sin_lat * coord2->sin_lat + coord1->cos_lat * coord2->cos_lat * cos(coord1->lon - coord2->lon);
+    return x < 1.0 ? acos(x) : 0.0;
+
+}
+
 __attribute__ ((nonnull(1))) __attribute__ ((pure))
     static inline double
 track_delta(const track_t *track, int i, int j)
 {
-    const coord_t *coord_i = track->coords + i;
-    const coord_t *coord_j = track->coords + j;
-    double x = coord_i->sin_lat * coord_j->sin_lat + coord_i->cos_lat * coord_j->cos_lat * cos(coord_i->lon - coord_j->lon);
-    return x < 1.0 ? acos(x) : 0.0;
+    return coord_delta(track->coords + i, track->coords + j);
 }
 
 __attribute__ ((nonnull(1))) __attribute__ ((pure))
@@ -173,6 +179,32 @@ track_last_at_least(const track_t *track, int i, int begin, int end, double boun
         if (d > bound)
             return j;
         j = track_fast_backward(track, j, bound - d);
+    }
+    return -1;
+}
+
+__attribute__ ((nonnull(1, 2))) __attribute__ ((pure))
+    static inline int
+track_first_inside(const track_t *track, const coord_t *coord, double radius, int begin, int end)
+{
+    for (int i = begin; i < end; ) {
+	double d = coord_delta(coord, track->coords + i);
+	if (d <= radius)
+	    return i;
+	i = track_forward(track, i, d - radius);
+    }
+    return -1;
+}
+
+__attribute__ ((nonnull(1, 2))) __attribute__ ((pure))
+    static inline int
+track_first_outside(const track_t *track, const coord_t *coord, double radius, int begin, int end)
+{
+    for (int i = begin; i < end; ) {
+	double d = coord_delta(coord, track->coords + i);
+	if (d > radius)
+	    return i;
+	i = track_forward(track, i, d - radius);
     }
     return -1;
 }
@@ -765,7 +797,7 @@ track_frcfd_circuit_distance(const track_t *track, int n, int *indexes)
 }
 
     result_t *
-track_optimize_frcfd(track_t *track, int complexity)
+track_optimize_frcfd(track_t *track, int complexity, const declaration_t *declaration)
 {
     static const char *league = "Coupe F\303\251d\303\251rale de Distance (France)";
     result_t *result = result_new();
@@ -835,7 +867,7 @@ track_optimize_frcfd(track_t *track, int complexity)
 }
 
     result_t *
-track_optimize_uknxcl(track_t *track, int complexity)
+track_optimize_uknxcl(track_t *track, int complexity, const declaration_t *declaration)
 {
     static const char *league = "UK National XC League";
     result_t *result = result_new();
@@ -903,7 +935,7 @@ track_optimize_uknxcl(track_t *track, int complexity)
 }
 
     result_t *
-track_optimize_ukxcl(track_t *track, int complexity)
+track_optimize_ukxcl(track_t *track, int complexity, const declaration_t *declaration)
 {
     static const char *league = "Cross Country League (United Kingdom)";
     result_t *result = result_new();

@@ -34,6 +34,12 @@ void die(const char *, int, const char *, const char *, int) __attribute__ ((nor
 void *alloc(int) __attribute__ ((malloc));
 
 typedef struct {
+    int length;
+    int capacity;
+    char *string;
+} string_buffer_t;
+
+typedef struct {
     int lat;
     int lon;
     time_t time;
@@ -100,6 +106,23 @@ typedef struct {
     char *igc;
 } track_t;
 
+typedef struct {
+    coord_t coord;
+    double radius;
+} turnpoint_t;
+
+typedef struct {
+    int nturnpoints;
+    int turnpoints_capacity;
+    turnpoint_t *turnpoints;
+} declaration_t;
+
+string_buffer_t *string_buffer_new(void);
+void string_buffer_free(string_buffer_t *);
+void string_buffer_append(string_buffer_t *, const char *, int);
+const char *string_buffer_string(const string_buffer_t *);
+void string_buffer_reset(string_buffer_t *);
+
 void trkpt_to_wpt(const trkpt_t *, wpt_t *);
 
 void route_delete(route_t *);
@@ -111,11 +134,14 @@ void result_delete(result_t *);
 route_t *result_push_new_route(result_t *, const char *, const char *, double, double, int, int);
 void result_write_gpx(const result_t *, const track_t *, int, int, FILE *);
 
+declaration_t *declaration_new_from_file(FILE *) __attribute__ ((malloc));
+void declaration_free(declaration_t *);
+
 track_t *track_new_from_igc(const char *, FILE *) __attribute__ ((malloc));
 void track_compute_circuit_tables(track_t *, double);
 void track_delete(track_t *);
-result_t *track_optimize_frcfd(track_t *, int);
-result_t *track_optimize_uknxcl(track_t *, int);
-result_t *track_optimize_ukxcl(track_t *, int);
+result_t *track_optimize_frcfd(track_t *, int, const declaration_t *declaration);
+result_t *track_optimize_uknxcl(track_t *, int, const declaration_t *declaration);
+result_t *track_optimize_ukxcl(track_t *, int, const declaration_t *declaration);
 
 #endif
