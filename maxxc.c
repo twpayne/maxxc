@@ -71,7 +71,7 @@ usage(void)
             "\t-h, --help\t\t\tprint usage and exit\n"
             "\t-l, --league=LEAGUE\t\tset league\n"
             "\t-c, --complexity=N\t\tset maximum flight complexity\n"
-	    "\t-d, --declaration=FILENAME\tset flight declaration\n"
+            "\t-d, --declaration=FILENAME\tset flight declaration\n"
             "\t-o, --output=FILENAME\t\tset output filename (default is stdout)\n"
             "\t-i, --embed-igc\t\t\tembed IGC in output\n"
             "\t-t, --embed-trk\t\t\tembed GPX tracklog in output\n"
@@ -128,17 +128,17 @@ main(int argc, char *argv[])
                 if (errno || *endptr)
                     error("invalid integer value '%s'", optarg);
                 break;
-	    case 'd':
-		{
-		    if (declaration)
-			declaration_free(declaration);
-		    FILE *file = fopen(optarg, "r");
-		    if (!file)
-			DIE("fopen", errno);
-		    declaration = declaration_new_from_file(file);
-		    fclose(file);
-		}
-		break;
+            case 'd':
+                {
+                    if (declaration)
+                        declaration_free(declaration);
+                    FILE *file = fopen(optarg, "r");
+                    if (!file)
+                        DIE("fopen", errno);
+                    declaration = declaration_new_from_file(file);
+                    fclose(file);
+                }
+                break;
             case 'h':
                 usage();
                 return EXIT_SUCCESS;

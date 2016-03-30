@@ -19,8 +19,8 @@ string_buffer_new(void)
 string_buffer_free(string_buffer_t *string_buffer)
 {
     if (string_buffer) {
-	free(string_buffer->string);
-	free(string_buffer);
+        free(string_buffer->string);
+        free(string_buffer);
     }
 }
 
@@ -28,10 +28,10 @@ string_buffer_free(string_buffer_t *string_buffer)
 string_buffer_append(string_buffer_t *string_buffer, const char *s, int len)
 {
     if (string_buffer->length + len + 1 > string_buffer->capacity) {
-	string_buffer->capacity = 2 * string_buffer->capacity;
-	string_buffer->string = realloc(string_buffer->string, string_buffer->capacity);
-	if (!string_buffer->string)
-	    DIE("realloc", errno);
+        string_buffer->capacity = 2 * string_buffer->capacity;
+        string_buffer->string = realloc(string_buffer->string, string_buffer->capacity);
+        if (!string_buffer->string)
+            DIE("realloc", errno);
     }
     memcpy(string_buffer->string + string_buffer->length, s, len);
     string_buffer->length += len;

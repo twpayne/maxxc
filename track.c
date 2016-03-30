@@ -188,10 +188,10 @@ __attribute__ ((nonnull(1, 2))) __attribute__ ((pure))
 track_first_inside(const track_t *track, const coord_t *coord, double radius, int begin, int end)
 {
     for (int i = begin; i < end; ) {
-	double d = coord_delta(coord, track->coords + i);
-	if (d <= radius)
-	    return i;
-	i = track_forward(track, i, d - radius);
+        double d = coord_delta(coord, track->coords + i);
+        if (d <= radius)
+            return i;
+        i = track_forward(track, i, d - radius);
     }
     return -1;
 }
@@ -201,10 +201,10 @@ __attribute__ ((nonnull(1, 2))) __attribute__ ((pure))
 track_first_outside(const track_t *track, const coord_t *coord, double radius, int begin, int end)
 {
     for (int i = begin; i < end; ) {
-	double d = coord_delta(coord, track->coords + i);
-	if (d > radius)
-	    return i;
-	i = track_forward(track, i, d - radius);
+        double d = coord_delta(coord, track->coords + i);
+        if (d > radius)
+            return i;
+        i = track_forward(track, i, d - radius);
     }
     return -1;
 }
