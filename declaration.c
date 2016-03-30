@@ -50,7 +50,7 @@ declaration_start_element_handler(void *userData, const XML_Char *name, const XM
 		    double deg_lat = strtod(atts[i + 1], &endptr);
 		    if (*endptr || errno)
 			DIE("strtod", errno ? errno : EINVAL);
-		    double lat = M_PI * lat / 180.0;
+		    double lat = M_PI * deg_lat / 180.0;
 		    turnpoint.coord.sin_lat = sin(lat);
 		    turnpoint.coord.cos_lat = cos(lat);
 		} else if (!strcmp(atts[i], "lon")) {
